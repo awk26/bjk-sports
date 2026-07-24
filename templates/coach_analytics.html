@@ -1,9 +1,6 @@
 {% extends "layout.html" %}
 {% block title %}Performance Analytics{% endblock %}
 {% block page_content %}
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500&display=swap" rel="stylesheet">
-
 <div class="container-fluid py-4 px-4 pd-wrap">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
@@ -115,7 +112,7 @@
         --navy:#1F3864; --navy-dark:#152747; --accent:#2E74B5; --accent-light:#DCE6F1;
         --border:#E3E8EF; --text-secondary:#5B6472; --text-muted:#8A93A2;
         --success:#15803D; --success-bg:#E7F5EC; --warning:#B45309; --warning-bg:#FDF1E0;
-        --danger:#C0362C; font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+        --danger:#C0362C; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
         max-width:100%; overflow-x:hidden;
     }
     .pd-wrap, .pd-wrap *{ min-width:0; }
@@ -141,7 +138,7 @@
 
     .index-block{text-align:right;}
     .index-label{font-size:13px;color:var(--text-secondary);margin:0 0 2px;}
-    .index-value{font-family:'Fraunces',serif;font-size:44px;font-weight:500;line-height:1;color:#1A2333;}
+    .index-value{font-family:Georgia,'Times New Roman',serif;font-size:44px;font-weight:500;line-height:1;color:#1A2333;}
     .index-delta{font-size:13px;font-weight:600;}
 
     .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:20px;}
@@ -178,7 +175,6 @@
     .pd-table .num{text-align:right;font-variant-numeric:tabular-nums;}
 </style>
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
 (function () {
@@ -193,7 +189,7 @@
     function initials(name) { return name.split(' ').map(function (p) { return p[0]; }).join('').slice(0, 2).toUpperCase(); }
     function fmtDelta(d) {
         var up = d >= 0;
-        return '<i class="ti ti-trending-' + (up ? 'up' : 'down') + '"></i> ' + (up ? '+' : '') + d;
+        return '<i class="bi bi-graph-' + (up ? 'up' : 'down') + '-arrow"></i> ' + (up ? '+' : '') + d;
     }
     function attColor(pct) {
         if (pct === null || pct === undefined) return '#9AA5B4';
@@ -212,15 +208,15 @@
 
     function renderKpis(a) {
         var cats = [
-            { key: 'physical', label: 'Physical', icon: 'ti-bolt' },
-            { key: 'technical', label: 'Technical', icon: 'ti-target-arrow' },
-            { key: 'tactical', label: 'Tactical', icon: 'ti-chess-knight' },
-            { key: 'behavioral', label: 'Behavioural', icon: 'ti-mood-smile' }
+            { key: 'physical', label: 'Physical', icon: 'bi-lightning-charge' },
+            { key: 'technical', label: 'Technical', icon: 'bi-bullseye' },
+            { key: 'tactical', label: 'Tactical', icon: 'bi-diagram-3' },
+            { key: 'behavioral', label: 'Behavioural', icon: 'bi-emoji-smile' }
         ];
         document.getElementById('kpis').innerHTML = cats.map(function (c) {
             var d = Math.round((a.cat[c.key] - a.prev_cat[c.key]) * 10) / 10;
             var color = d >= 0 ? 'var(--success)' : 'var(--danger)';
-            return '<div class="kpi-card"><i class="ti ' + c.icon + '"></i><p class="kpi-label">' + c.label + '</p>' +
+            return '<div class="kpi-card"><i class="bi ' + c.icon + '"></i><p class="kpi-label">' + c.label + '</p>' +
                 '<p class="kpi-value">' + a.cat[c.key].toFixed(1) + '<span style="font-size:13px;color:var(--text-muted);font-weight:400;"> /5</span></p>' +
                 '<p class="kpi-delta" style="color:' + color + ';">' + (d >= 0 ? '+' : '') + d.toFixed(1) + ' vs last</p></div>';
         }).join('');
@@ -239,11 +235,11 @@
     function renderRecs(a) {
         var el = document.getElementById('recs');
         if (!a.recs || !a.recs.length) {
-            el.innerHTML = '<li><i class="ti ti-bulb"></i><span class="text-muted">No recommendations yet &mdash; submit an assessment to generate insights.</span></li>';
+            el.innerHTML = '<li><i class="bi bi-lightbulb"></i><span class="text-muted">No recommendations yet &mdash; submit an assessment to generate insights.</span></li>';
             return;
         }
         el.innerHTML = a.recs.map(function (r) {
-            return '<li><i class="ti ti-bulb"></i><span>' + r + '</span></li>';
+            return '<li><i class="bi bi-lightbulb"></i><span>' + r + '</span></li>';
         }).join('');
     }
 
