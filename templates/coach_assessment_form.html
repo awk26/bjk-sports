@@ -1,0 +1,569 @@
+{% extends "layout.html" %}
+{% block title %}Athlete Assessment - {{ athlete.name }}{% endblock %}
+
+{% macro rating_group(field, label) %}
+<div class="mb-3">
+    <label class="form-label small fw-medium d-block">{{ label }}</label>
+    <input type="hidden" name="{{ field }}" id="{{ field }}" value="{{ assessment[field] or '' }}">
+    <div class="btn-group rating-group" data-field="{{ field }}" id="{{ field }}_group" role="group">
+        {% for n in range(1, 6) %}
+        <button type="button"
+                class="btn btn-outline-primary rating-btn {{ 'active' if assessment[field]|string == n|string }}"
+                data-value="{{ n }}">{{ n }}</button>
+        {% endfor %}
+    </div>
+    <div class="form-text">1 = Poor &middot; 5 = Excellent</div>
+</div>
+{% endmacro %}
+
+{% macro remarks_field(field, label, rows=2) %}
+<div class="mb-3">
+    <label class="form-label small fw-medium">{{ label }}</label>
+    <textarea class="form-control form-control-sm" name="{{ field }}" id="{{ field }}" rows="{{ rows }}" maxlength="4000">{{ assessment[field] or '' }}</textarea>
+</div>
+{% endmacro %}
+
+{% macro text_field(field, label, maxlength=500, required=false) %}
+<div class="mb-3">
+    <label class="form-label small fw-medium">{{ label }}{% if required %} <span class="text-danger">*</span>{% endif %}</label>
+    <input type="text" class="form-control form-control-sm" name="{{ field }}" id="{{ field }}" maxlength="{{ maxlength }}" value="{{ assessment[field] or '' }}">
+</div>
+{% endmacro %}
+
+{% macro select_field(field, label, options, required=false) %}
+<div class="mb-3">
+    <label class="form-label small fw-medium">{{ label }}{% if required %} <span class="text-danger">*</span>{% endif %}</label>
+    <select class="form-select form-select-sm" name="{{ field }}" id="{{ field }}">
+        <option value="">-- Select --</option>
+        {% for opt in options %}
+        <option value="{{ opt }}" {{ 'selected' if assessment[field] == opt }}>{{ opt }}</option>
+        {% endfor %}
+    </select>
+</div>
+{% endmacro %}
+
+{% block page_content %}
+<div class="container-fluid py-4 px-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h4 class="fw-bold mb-1">Athlete Assessment</h4>
+            <p class="text-muted small mb-0">
+                {{ athlete.name }} &middot; {{ athlete.sport or 'Sport not set' }}
+                {% if assessment.calculated_age %} &middot; Age {{ assessment.calculated_age }}{% endif %}
+                {% if assessment.age_group_focus %} &middot; Focus: {{ assessment.age_group_focus }}{% endif %}
+            </p>
+        </div>
+        {% if assessment_id %}
+        <a href="{{ url_for('coach.coach_assessment_history', athlete_id=athlete.id) }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+            <i class="bi bi-arrow-left me-1"></i> Back
+        </a>
+        {% else %}
+        <a href="{{ url_for('coach.coach_athletes') }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+            <i class="bi bi-arrow-left me-1"></i> Back
+        </a>
+        {% endif %}
+    </div>
+
+    {{ flashed() }}
+
+    <!-- Progress bar -->
+    <div class="card border-0 shadow-sm rounded-4 mb-3">
+        <div class="card-body p-3">
+            <div class="progress mb-2" style="height: 8px;">
+                <div class="progress-bar" id="formProgressBar" role="progressbar" style="width: 10%;"></div>
+            </div>
+            <div class="d-flex flex-wrap gap-2" id="stepNav">
+                <!-- filled by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- On-page validation message (no browser alert()) -->
+    <div id="stepErrorBox" class="alert alert-danger small d-none mb-3" role="alert">
+        <div class="fw-bold mb-1"><i class="bi bi-exclamation-triangle me-1"></i> Please complete the required fields on this step before continuing:</div>
+        <ul class="mb-0 ps-3" id="stepErrorList"></ul>
+    </div>
+
+    <form method="POST" id="assessmentForm" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" id="formAction" value="draft">
+
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-4">
+
+                <!-- Step 1: Basic Info + Attendance -->
+                <div class="form-section" data-step="1">
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-person-badge me-1"></i> 1. Basic Info & Attendance</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-medium">Assessment Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control form-control-sm" name="assessment_date" id="assessment_date"
+                                   value="{{ assessment.assessment_date or today }}">
+                        </div>
+                        <div class="col-md-4">
+                            {{ select_field('level', 'Level', ['Beginner', 'Intermediate', 'Advanced'], required=true) }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-medium">Age / Focus (auto)</label>
+                            <input type="text" class="form-control form-control-sm" disabled
+                                   value="{{ assessment.calculated_age or '-' }} yrs &middot; {{ assessment.age_group_focus or 'n/a' }}">
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-medium">Sessions Planned <span class="text-danger">*</span></label>
+                            <input type="number" min="0" class="form-control form-control-sm" id="sessions_planned" name="sessions_planned" value="{{ assessment.sessions_planned or '' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-medium">Sessions Attended <span class="text-danger">*</span></label>
+                            <input type="number" min="0" class="form-control form-control-sm" id="sessions_attended" name="sessions_attended" value="{{ assessment.sessions_attended or '' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-medium">Attendance %</label>
+                            <input type="text" class="form-control form-control-sm" id="attendance_pct_display" disabled
+                                   value="{{ assessment.attendance_pct or '' }}">
+                        </div>
+                    </div>
+                    {{ remarks_field('attendance_remarks', 'Remarks / Injury / Absence Reason', rows=2) }}
+                </div>
+
+                <!-- Step 2: Physical Development -->
+                <div class="form-section d-none" data-step="2">
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-lightning-charge me-1"></i> 2. Physical Development</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            {{ rating_group('speed_rating', 'Speed') }}
+                            {{ remarks_field('speed_remarks', 'Speed Remarks') }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ rating_group('agility_rating', 'Agility') }}
+                            {{ remarks_field('agility_remarks', 'Agility Remarks') }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ rating_group('balance_rating', 'Balance') }}
+                            {{ remarks_field('balance_remarks', 'Balance Remarks') }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ rating_group('coordination_rating', 'Coordination') }}
+                            {{ remarks_field('coordination_remarks', 'Coordination Remarks') }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ rating_group('strength_rating', 'Strength (age-appropriate)') }}
+                            {{ remarks_field('strength_remarks', 'Strength Remarks') }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ rating_group('endurance_rating', 'Endurance') }}
+                            {{ remarks_field('endurance_remarks', 'Endurance Remarks') }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Technical Skills -->
+                <div class="form-section d-none" data-step="3">
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-controller me-1"></i> 3. Sport-Specific Skill Assessment - Technical</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            {{ rating_group('technique_rating', 'Basic Technique / Skill') }}
+                            {{ remarks_field('technique_remarks', 'Remarks') }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ rating_group('control_accuracy_rating', 'Control & Accuracy') }}
+                            {{ remarks_field('control_accuracy_remarks', 'Remarks') }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ rating_group('footwork_rating', 'Footwork & Movement') }}
+                            {{ remarks_field('footwork_remarks', 'Remarks') }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 4: Tactical Skills -->
+                <div class="form-section d-none" data-step="4">
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-diagram-3 me-1"></i> 4. Sport-Specific Skill Assessment - Tactical</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            {{ rating_group('game_awareness_rating', 'Game Awareness') }}
+                            {{ remarks_field('game_awareness_remarks', 'Remarks') }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ rating_group('decision_making_rating', 'Decision Making') }}
+                            {{ remarks_field('decision_making_remarks', 'Remarks') }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ rating_group('follow_instructions_rating', 'Ability to Follow Instructions') }}
+                            {{ remarks_field('follow_instructions_remarks', 'Remarks') }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 5: Behavioral Attributes -->
+                <div class="form-section d-none" data-step="5">
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-emoji-smile me-1"></i> 5. Psychological & Behavioral Attributes</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            {{ rating_group('discipline_rating', 'Discipline') }}
+                            {{ remarks_field('discipline_remarks', 'Remarks') }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ rating_group('effort_rating', 'Effort / Work Ethic') }}
+                            {{ remarks_field('effort_remarks', 'Remarks') }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ rating_group('coachability_rating', 'Coachability') }}
+                            {{ remarks_field('coachability_remarks', 'Remarks') }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ rating_group('confidence_rating', 'Confidence') }}
+                            {{ remarks_field('confidence_remarks', 'Remarks') }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ rating_group('team_behaviour_rating', 'Team Behaviour / Respect') }}
+                            {{ remarks_field('team_behaviour_remarks', 'Remarks') }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 6: Talent Identification -->
+                <div class="form-section d-none" data-step="6">
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-star me-1"></i> 6. Talent Identification Marker</h6>
+                    {{ select_field('talent_category', 'Category', ['Recreational', 'Developing', 'Potential Talent', 'High Potential'], required=true) }}
+                    <div class="mb-3">
+                        <label class="form-label small fw-medium">Justification (min. 20 characters) <span class="text-danger">*</span></label>
+                        <textarea class="form-control form-control-sm" name="talent_justification" id="talent_justification" rows="3" maxlength="4000">{{ assessment.talent_justification or '' }}</textarea>
+                    </div>
+                </div>
+
+                <!-- Step 7: Strengths & Improvements -->
+                <div class="form-section d-none" data-step="7">
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-graph-up-arrow me-1"></i> 7 & 8. Key Strengths & Areas for Improvement</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="small text-muted mb-2">Top 3 Strengths</h6>
+                            {{ text_field('strength_1', 'Strength 1', required=true) }}
+                            {{ text_field('strength_2', 'Strength 2') }}
+                            {{ text_field('strength_3', 'Strength 3') }}
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="small text-muted mb-2">Top 3 Areas for Improvement</h6>
+                            {{ text_field('improvement_1', 'Improvement 1', required=true) }}
+                            {{ text_field('improvement_2', 'Improvement 2') }}
+                            {{ text_field('improvement_3', 'Improvement 3') }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 8: IDP -->
+                <div class="form-section d-none" data-step="8">
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-map me-1"></i> 9. Individual Development Plan (4-8 Weeks)</h6>
+                    {% set idp_roles = ['Athlete', 'Coach', 'Parent', 'Shared (Coach/Athlete)', 'Shared (Parent/Athlete)'] %}
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h6 class="small text-muted mb-2">Technical</h6>
+                            {{ text_field('idp_technical_action', 'Action Plan') }}
+                            {{ select_field('idp_technical_responsibility', 'Responsibility', idp_roles) }}
+                        </div>
+                        <div class="col-md-4">
+                            <h6 class="small text-muted mb-2">Physical</h6>
+                            {{ remarks_field('idp_physical_action', 'Action Plan', rows=2) }}
+                            {{ select_field('idp_physical_responsibility', 'Responsibility', idp_roles) }}
+                        </div>
+                        <div class="col-md-4">
+                            <h6 class="small text-muted mb-2">Behavioral</h6>
+                            {{ remarks_field('idp_behavioral_action', 'Action Plan', rows=2) }}
+                            {{ select_field('idp_behavioral_responsibility', 'Responsibility', idp_roles) }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 9: Parents Feedback -->
+                <div class="form-section d-none" data-step="9">
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-people me-1"></i> 10. Parents Feedback</h6>
+                    {{ text_field('parent_name', 'Parent Name', maxlength=100) }}
+                    <div class="mb-3">
+                        <label class="form-label small fw-medium">Feedback Comments</label>
+                        <textarea class="form-control form-control-sm" name="parent_feedback" id="parent_feedback" rows="3" maxlength="1000">{{ assessment.parent_feedback or '' }}</textarea>
+                    </div>
+                </div>
+
+                <!-- Step 10: Coach Summary -->
+                <div class="form-section d-none" data-step="10">
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-clipboard2-check me-1"></i> 11. Coach's Summary</h6>
+                    {{ select_field('overall_progress', 'Overall Progress', ['Excellent', 'Good', 'Average', 'Need Attention'], required=true) }}
+                    <div class="mb-3">
+                        <label class="form-label small fw-medium">Coach Remarks</label>
+                        <textarea class="form-control form-control-sm" name="coach_summary_remarks" id="coach_summary_remarks" rows="3" maxlength="1000">{{ assessment.coach_summary_remarks or '' }}</textarea>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="card-footer bg-white border-0 rounded-bottom-4 p-3 d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-4" id="prevBtn">
+                    <i class="bi bi-arrow-left me-1"></i> Previous
+                </button>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-outline-primary btn-sm rounded-pill px-4" id="saveDraftBtn">
+                        <i class="bi bi-save me-1"></i> Save Draft
+                    </button>
+                    <button type="button" class="btn btn-primary btn-sm rounded-pill px-4" id="nextBtn">
+                        Next <i class="bi bi-arrow-right ms-1"></i>
+                    </button>
+                    <button type="submit" class="btn btn-success btn-sm rounded-pill px-4 d-none" id="submitBtn">
+                        <i class="bi bi-check2-circle me-1"></i> Submit Assessment
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+    .rating-btn.active { background-color: #0d6efd; color: #fff; }
+    .step-pill {
+        width: 28px; height: 28px; border-radius: 50%; display: flex;
+        align-items: center; justify-content: center; font-size: .75rem;
+        background: #eee; color: #666; cursor: pointer; flex-shrink: 0;
+        border: none;
+    }
+    .step-pill.active { background: #0d6efd; color: #fff; }
+    .step-pill.done { background: #198754; color: #fff; }
+    .step-pill.error { background: #dc3545; color: #fff; }
+    .rating-group.rating-invalid .rating-btn { border-color: #dc3545; }
+    .rating-group.rating-invalid { outline: 1px solid #dc3545; border-radius: .375rem; }
+</style>
+
+<script>
+(function () {
+    var TOTAL_STEPS = 10;
+    var STEP_LABELS = ["Basic/Attendance", "Physical", "Technical", "Tactical", "Behavioral",
+                        "Talent ID", "Strengths", "IDP", "Parents", "Summary"];
+    var current = 1;
+    var maxUnlockedStep = 1;
+
+    // Required-field rules per step. Mirrors _validate_assessment() in
+    // routes/coach.py so client-side and server-side agree on what's
+    // mandatory to SUBMIT. Draft saves are never blocked by this.
+    var STEP_RULES = {
+        1: [
+            { id: "assessment_date", label: "Assessment Date" },
+            { id: "level", label: "Level" },
+            { id: "sessions_planned", label: "Sessions Planned" },
+            { id: "sessions_attended", label: "Sessions Attended" }
+        ],
+        2: [
+            { id: "speed_rating", label: "Speed rating", rating: true },
+            { id: "agility_rating", label: "Agility rating", rating: true },
+            { id: "balance_rating", label: "Balance rating", rating: true },
+            { id: "coordination_rating", label: "Coordination rating", rating: true },
+            { id: "strength_rating", label: "Strength rating", rating: true },
+            { id: "endurance_rating", label: "Endurance rating", rating: true }
+        ],
+        3: [
+            { id: "technique_rating", label: "Basic Technique / Skill rating", rating: true },
+            { id: "control_accuracy_rating", label: "Control & Accuracy rating", rating: true },
+            { id: "footwork_rating", label: "Footwork & Movement rating", rating: true }
+        ],
+        4: [
+            { id: "game_awareness_rating", label: "Game Awareness rating", rating: true },
+            { id: "decision_making_rating", label: "Decision Making rating", rating: true },
+            { id: "follow_instructions_rating", label: "Ability to Follow Instructions rating", rating: true }
+        ],
+        5: [
+            { id: "discipline_rating", label: "Discipline rating", rating: true },
+            { id: "effort_rating", label: "Effort / Work Ethic rating", rating: true },
+            { id: "coachability_rating", label: "Coachability rating", rating: true },
+            { id: "confidence_rating", label: "Confidence rating", rating: true },
+            { id: "team_behaviour_rating", label: "Team Behaviour / Respect rating", rating: true }
+        ],
+        6: [
+            { id: "talent_category", label: "Talent Category" },
+            { id: "talent_justification", label: "Justification (min. 20 characters)", minLength: 20 }
+        ],
+        7: [
+            { id: "strength_1", label: "Strength 1" },
+            { id: "improvement_1", label: "Improvement 1" }
+        ],
+        8: [],
+        9: [],
+        10: [
+            { id: "overall_progress", label: "Overall Progress" }
+        ]
+    };
+
+    var sections = document.querySelectorAll(".form-section");
+    var stepNav = document.getElementById("stepNav");
+    var progressBar = document.getElementById("formProgressBar");
+    var prevBtn = document.getElementById("prevBtn");
+    var nextBtn = document.getElementById("nextBtn");
+    var submitBtn = document.getElementById("submitBtn");
+    var form = document.getElementById("assessmentForm");
+    var formAction = document.getElementById("formAction");
+    var errorBox = document.getElementById("stepErrorBox");
+    var errorList = document.getElementById("stepErrorList");
+
+    // Build step nav pills
+    for (var i = 1; i <= TOTAL_STEPS; i++) {
+        var pill = document.createElement("button");
+        pill.type = "button";
+        pill.className = "step-pill";
+        pill.textContent = i;
+        pill.title = STEP_LABELS[i - 1];
+        pill.dataset.step = i;
+        pill.addEventListener("click", function () { attemptGoToStep(parseInt(this.dataset.step)); });
+        stepNav.appendChild(pill);
+    }
+
+    function clearFieldHighlights(step) {
+        var rules = STEP_RULES[step] || [];
+        rules.forEach(function (rule) {
+            var el = document.getElementById(rule.id);
+            if (!el) return;
+            if (rule.rating) {
+                var group = document.getElementById(rule.id + "_group");
+                if (group) group.classList.remove("rating-invalid");
+            } else {
+                el.classList.remove("is-invalid");
+            }
+        });
+    }
+
+    function validateStep(step) {
+        var rules = STEP_RULES[step] || [];
+        var missing = [];
+        rules.forEach(function (rule) {
+            var el = document.getElementById(rule.id);
+            if (!el) return;
+            var value = el.value ? el.value.trim() : "";
+            var ok = rule.minLength ? value.length >= rule.minLength : value !== "";
+
+            if (rule.rating) {
+                var group = document.getElementById(rule.id + "_group");
+                if (group) group.classList.toggle("rating-invalid", !ok);
+            } else {
+                el.classList.toggle("is-invalid", !ok);
+            }
+
+            if (!ok) missing.push(rule.label);
+        });
+        return missing;
+    }
+
+    function showStepError(messages) {
+        errorList.innerHTML = "";
+        messages.forEach(function (msg) {
+            var li = document.createElement("li");
+            li.textContent = msg;
+            errorList.appendChild(li);
+        });
+        errorBox.classList.remove("d-none");
+        errorBox.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    function clearStepError() {
+        errorBox.classList.add("d-none");
+        errorList.innerHTML = "";
+    }
+
+    function goToStep(step) {
+        clearStepError();
+        current = step;
+        sections.forEach(function (s) {
+            s.classList.toggle("d-none", parseInt(s.dataset.step) !== step);
+        });
+        stepNav.querySelectorAll(".step-pill").forEach(function (p) {
+            var n = parseInt(p.dataset.step);
+            p.classList.remove("error");
+            p.classList.toggle("active", n === step);
+            p.classList.toggle("done", n < step);
+        });
+        progressBar.style.width = Math.round((step / TOTAL_STEPS) * 100) + "%";
+        prevBtn.classList.toggle("invisible", step === 1);
+        nextBtn.classList.toggle("d-none", step === TOTAL_STEPS);
+        submitBtn.classList.toggle("d-none", step !== TOTAL_STEPS);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function attemptGoToStep(targetStep) {
+        // Always free to go back, or to any step already unlocked.
+        if (targetStep <= maxUnlockedStep) {
+            goToStep(targetStep);
+            return;
+        }
+        // Trying to jump ahead of an unfinished step — validate current first.
+        var missing = validateStep(current);
+        if (missing.length > 0) {
+            var pill = stepNav.querySelector('.step-pill[data-step="' + current + '"]');
+            if (pill) pill.classList.add("error");
+            showStepError(missing);
+            return;
+        }
+        maxUnlockedStep = Math.max(maxUnlockedStep, current + 1);
+        goToStep(targetStep);
+    }
+
+    prevBtn.addEventListener("click", function () {
+        if (current > 1) goToStep(current - 1);
+    });
+
+    nextBtn.addEventListener("click", function () {
+        var missing = validateStep(current);
+        if (missing.length > 0) {
+            var pill = stepNav.querySelector('.step-pill[data-step="' + current + '"]');
+            if (pill) pill.classList.add("error");
+            showStepError(missing);
+            return;
+        }
+        clearFieldHighlights(current);
+        if (current < TOTAL_STEPS) {
+            maxUnlockedStep = Math.max(maxUnlockedStep, current + 1);
+            goToStep(current + 1);
+        }
+    });
+
+    document.getElementById("saveDraftBtn").addEventListener("click", function () {
+        // Drafts can be saved with partial data at any time — no step validation.
+        formAction.value = "draft";
+    });
+
+    submitBtn.addEventListener("click", function () {
+        // Final submit still gets a full re-check of the last step on the page,
+        // in case the person edited something and didn't press "Next" again.
+        var missing = validateStep(current);
+        if (missing.length > 0) {
+            showStepError(missing);
+            return;
+        }
+        formAction.value = "submit";
+        form.submit();
+    });
+
+    // Rating button groups
+    document.querySelectorAll(".rating-group").forEach(function (group) {
+        var field = group.dataset.field;
+        var hidden = document.getElementById(field);
+        group.querySelectorAll(".rating-btn").forEach(function (btn) {
+            btn.addEventListener("click", function () {
+                hidden.value = this.dataset.value;
+                group.querySelectorAll(".rating-btn").forEach(function (b) { b.classList.remove("active"); });
+                this.classList.add("active");
+                group.classList.remove("rating-invalid");
+            });
+        });
+    });
+
+    // Live attendance % preview (server recomputes the authoritative value)
+    function updateAttendancePreview() {
+        var planned = parseInt(document.getElementById("sessions_planned").value) || 0;
+        var attended = parseInt(document.getElementById("sessions_attended").value) || 0;
+        var display = document.getElementById("attendance_pct_display");
+        display.value = planned > 0 ? ((attended / planned) * 100).toFixed(1) + "%" : "";
+    }
+    document.getElementById("sessions_planned").addEventListener("input", updateAttendancePreview);
+    document.getElementById("sessions_attended").addEventListener("input", updateAttendancePreview);
+    updateAttendancePreview();
+
+    goToStep(1);
+})();
+</script>
+{% endblock %}

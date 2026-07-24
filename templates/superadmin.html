@@ -1,0 +1,95 @@
+{% extends "layout.html" %}
+{% block title %}Super Admin{% endblock %}
+{% block page_content %}
+<div class="container-fluid py-4 px-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-1">Super Admin Overview</h4>
+            <p class="text-muted small mb-0">Full control over admins, coaches, and athletes</p>
+        </div>
+    </div>
+
+    {{ flashed() }}
+
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-3 bg-dark bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-person-badge fs-4 text-dark"></i>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold mb-0">Admins</h6>
+                            <small class="text-muted">{{ stats.admins }} total</small>
+                        </div>
+                    </div>
+                    <p class="small text-muted mb-3">Create, edit, and archive admin accounts.</p>
+                    <div class="mt-auto">
+                        <a href="{{ url_for('superadmin.superadmin_admins') }}" class="btn btn-dark btn-sm rounded-pill px-4">Manage Admins</a>
+                        <a href="{{ url_for('superadmin.superadmin_admin_create') }}" class="btn btn-outline-dark btn-sm rounded-pill px-4 ms-2">Add New</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-3 bg-danger bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-people fs-4 text-danger"></i>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold mb-0">Coaches</h6>
+                            <small class="text-muted">{{ stats.coaches }} total</small>
+                        </div>
+                    </div>
+                    <p class="small text-muted mb-3">Create, edit, and archive coach accounts.</p>
+                    <div class="mt-auto">
+                        <a href="{{ url_for('superadmin.superadmin_coaches') }}" class="btn btn-danger btn-sm rounded-pill px-4">Manage Coaches</a>
+                        <a href="{{ url_for('superadmin.superadmin_coach_create') }}" class="btn btn-outline-danger btn-sm rounded-pill px-4 ms-2">Add New</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-3 bg-primary bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-person-lines-fill fs-4 text-primary"></i>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold mb-0">Athletes</h6>
+                            <small class="text-muted">{{ stats.athletes }} total</small>
+                        </div>
+                    </div>
+                    <p class="small text-muted mb-3">View and manage every athlete across all coaches.</p>
+                    <div class="mt-auto">
+                        <a href="{{ url_for('superadmin.superadmin_athletes') }}" class="btn btn-primary btn-sm rounded-pill px-4">Manage Athletes</a>
+                        <a href="{{ url_for('superadmin.superadmin_athlete_create') }}" class="btn btn-outline-primary btn-sm rounded-pill px-4 ms-2">Add New</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4 text-center">
+                    <div class="rounded-circle bg-dark bg-opacity-10 p-3 d-inline-flex mb-3">
+                        <i class="bi bi-shield-fill-check fs-4 text-dark"></i>
+                    </div>
+                    <h6 class="fw-bold mb-1">Super Admin Access</h6>
+                    <p class="text-muted small mb-0">
+                        You have unrestricted access: create/edit/archive admins, coaches, and athletes.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

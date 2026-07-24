@@ -1,0 +1,161 @@
+{% extends "layout.html" %}
+{% block title %}Assessment - {{ athlete.name }}{% endblock %}
+
+{% macro rating_row(label, rating_field, remarks_field) %}
+<tr>
+    <td class="af-label">{{ label }}</td>
+    <td class="af-rating">{{ assessment[rating_field] or '-' }}</td>
+    <td class="af-remarks">{{ assessment[remarks_field] or '' }}</td>
+</tr>
+{% endmacro %}
+
+{% block page_content %}
+<div class="container-fluid py-4 px-4">
+    <div class="d-flex justify-content-between align-items-center mb-3 no-print">
+        <div>
+            <h4 class="fw-bold mb-1">
+                Athlete Assessment
+                <span class="badge bg-secondary rounded-pill ms-2"><i class="bi bi-eye me-1"></i>View Only</span>
+            </h4>
+            <p class="text-muted small mb-0">{{ athlete.name }} &middot; {{ assessment.assessment_date }}</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3" onclick="window.print()">
+                <i class="bi bi-printer me-1"></i> Print
+            </button>
+            <a href="{{ url_for('coach.coach_assessment_history', athlete_id=athlete.id) }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                <i class="bi bi-arrow-left me-1"></i> Back
+            </a>
+        </div>
+    </div>
+
+    {{ flashed() }}
+
+    <div class="card border-0 shadow-sm rounded-4 assessment-form-sheet">
+        <div class="card-body p-4">
+
+            <table class="table af-table mb-4">
+                <tr><th colspan="4" class="af-section">1. Basic Athlete Info</th></tr>
+                <tr><td class="af-label" style="width:22%">Name</td><td colspan="3">{{ athlete.name }}</td></tr>
+                <tr><td class="af-label">DOB / Age</td><td colspan="3">{{ athlete.dob or '-' }}{% if assessment.calculated_age %} &middot; {{ assessment.calculated_age }} yrs{% endif %}</td></tr>
+                <tr><td class="af-label">Sport</td><td colspan="3">{{ athlete.sport or '-' }}</td></tr>
+                <tr><td class="af-label">Level</td><td colspan="3">{{ assessment.level or '-' }}{% if assessment.age_group_focus %} &middot; Focus: {{ assessment.age_group_focus }}{% endif %}</td></tr>
+                <tr><td class="af-label">Coach Name</td><td colspan="3">{{ session.user.name }}</td></tr>
+            </table>
+
+            <table class="table af-table mb-4">
+                <tr><th colspan="4" class="af-section">2. Attendance / Trg Exposure</th></tr>
+                <tr><td class="af-label" style="width:22%">Sessions Planned</td><td>{{ assessment.sessions_planned or '-' }}</td>
+                    <td class="af-label" style="width:22%">Sessions Attended</td><td>{{ assessment.sessions_attended or '-' }}</td></tr>
+                <tr><td class="af-label">Attendance %</td><td>{{ assessment.attendance_pct or '-' }}{% if assessment.attendance_pct %}%{% endif %}</td>
+                    <td class="af-label">Remarks / Injury / Absence</td><td>{{ assessment.attendance_remarks or '' }}</td></tr>
+            </table>
+
+            <table class="table af-table mb-4">
+                <tr><th colspan="3" class="af-section">3. Physical Development <span class="fw-normal small">(Scale 1-5: 1=Poor, 5=Excellent)</span></th></tr>
+                <tr class="af-subhead"><td class="af-label">Attribute</td><td class="af-rating">Rating</td><td class="af-remarks">Remarks</td></tr>
+                {{ rating_row('Speed', 'speed_rating', 'speed_remarks') }}
+                {{ rating_row('Agility', 'agility_rating', 'agility_remarks') }}
+                {{ rating_row('Balance', 'balance_rating', 'balance_remarks') }}
+                {{ rating_row('Coordination', 'coordination_rating', 'coordination_remarks') }}
+                {{ rating_row('Strength (as per age)', 'strength_rating', 'strength_remarks') }}
+                {{ rating_row('Endurance', 'endurance_rating', 'endurance_remarks') }}
+            </table>
+
+            <table class="table af-table mb-4">
+                <tr><th colspan="3" class="af-section">4. Sport-Specific Skill Assessment</th></tr>
+                <tr class="af-subhead"><td class="af-label">A. Technical Understanding</td><td class="af-rating">Rating</td><td class="af-remarks">Remarks</td></tr>
+                {{ rating_row('Basic Technique / Skill', 'technique_rating', 'technique_remarks') }}
+                {{ rating_row('Control & Accuracy', 'control_accuracy_rating', 'control_accuracy_remarks') }}
+                {{ rating_row('Footwork & Movement', 'footwork_rating', 'footwork_remarks') }}
+                <tr class="af-subhead"><td class="af-label">B. Tactical Understanding</td><td class="af-rating">Rating</td><td class="af-remarks">Remarks</td></tr>
+                {{ rating_row('Game Awareness', 'game_awareness_rating', 'game_awareness_remarks') }}
+                {{ rating_row('Decision Making', 'decision_making_rating', 'decision_making_remarks') }}
+                {{ rating_row('Ability to Follow Instructions', 'follow_instructions_rating', 'follow_instructions_remarks') }}
+            </table>
+
+            <table class="table af-table mb-4">
+                <tr><th colspan="3" class="af-section">5. Psychological & Behavioral Attributes</th></tr>
+                <tr class="af-subhead"><td class="af-label">Attribute</td><td class="af-rating">Rating</td><td class="af-remarks">Remarks</td></tr>
+                {{ rating_row('Discipline', 'discipline_rating', 'discipline_remarks') }}
+                {{ rating_row('Effort / Work Ethic', 'effort_rating', 'effort_remarks') }}
+                {{ rating_row('Coachability', 'coachability_rating', 'coachability_remarks') }}
+                {{ rating_row('Confidence', 'confidence_rating', 'confidence_remarks') }}
+                {{ rating_row('Team Behaviour / Respect', 'team_behaviour_rating', 'team_behaviour_remarks') }}
+            </table>
+
+            <table class="table af-table mb-4">
+                <tr><th colspan="4" class="af-section">6. Talent Identification Marker (Coach to Categorize)</th></tr>
+                {% for cat in ['Recreational', 'Developing', 'Potential Talent', 'High Potential'] %}
+                <tr>
+                    <td style="width:6%">{{ '[ X ]' if assessment.talent_category == cat else '[   ]' }}</td>
+                    <td colspan="3">{{ cat }}</td>
+                </tr>
+                {% endfor %}
+                <tr><td class="af-label" colspan="1">Justification</td><td colspan="3">{{ assessment.talent_justification or '' }}</td></tr>
+            </table>
+
+            <table class="table af-table mb-4">
+                <tr><th colspan="2" class="af-section">7. Key Strengths (Top 3)</th></tr>
+                <tr><td style="width:6%">1.</td><td>{{ assessment.strength_1 or '' }}</td></tr>
+                <tr><td>2.</td><td>{{ assessment.strength_2 or '' }}</td></tr>
+                <tr><td>3.</td><td>{{ assessment.strength_3 or '' }}</td></tr>
+            </table>
+
+            <table class="table af-table mb-4">
+                <tr><th colspan="2" class="af-section">8. Key Areas for Improvement (Top 3)</th></tr>
+                <tr><td style="width:6%">1.</td><td>{{ assessment.improvement_1 or '' }}</td></tr>
+                <tr><td>2.</td><td>{{ assessment.improvement_2 or '' }}</td></tr>
+                <tr><td>3.</td><td>{{ assessment.improvement_3 or '' }}</td></tr>
+            </table>
+
+            <table class="table af-table mb-4">
+                <tr><th colspan="3" class="af-section">9. Individual Development Plan (4-8 Weeks)</th></tr>
+                <tr class="af-subhead"><td class="af-label">Area</td><td>Action Plan</td><td style="width:22%">Responsibility</td></tr>
+                <tr><td class="af-label">Technical</td><td>{{ assessment.idp_technical_action or '' }}</td><td>{{ assessment.idp_technical_responsibility or '' }}</td></tr>
+                <tr><td class="af-label">Physical</td><td>{{ assessment.idp_physical_action or '' }}</td><td>{{ assessment.idp_physical_responsibility or '' }}</td></tr>
+                <tr><td class="af-label">Behavioral</td><td>{{ assessment.idp_behavioral_action or '' }}</td><td>{{ assessment.idp_behavioral_responsibility or '' }}</td></tr>
+            </table>
+
+            <table class="table af-table mb-4">
+                <tr><th colspan="2" class="af-section">10. Parents Feedback</th></tr>
+                <tr><td class="af-label" style="width:22%">Parent Name</td><td>{{ assessment.parent_name or '' }}</td></tr>
+                <tr><td class="af-label">Feedback Comments</td><td>{{ assessment.parent_feedback or '' }}</td></tr>
+            </table>
+
+            <table class="table af-table mb-2">
+                <tr><th colspan="4" class="af-section">11. Coach's Summary</th></tr>
+                <tr>
+                    <td class="af-label" style="width:22%">Overall Progress</td>
+                    <td colspan="3">
+                        {% for level in ['Excellent', 'Good', 'Average', 'Need Attention'] %}
+                        <span class="me-3">{{ '[ X ]' if assessment.overall_progress == level else '[   ]' }} {{ level }}</span>
+                        {% endfor %}
+                    </td>
+                </tr>
+                <tr><td class="af-label">Coach Remarks</td><td colspan="3">{{ assessment.coach_summary_remarks or '' }}</td></tr>
+            </table>
+
+            <div class="d-flex justify-content-between mt-4 pt-3 border-top">
+                <div class="small text-muted">Status: <strong>{{ assessment.status }}</strong></div>
+                <div class="small text-muted">Last Updated: {{ assessment.updated_at }}</div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<style>
+    .af-table { border: 1px solid #adb5bd; }
+    .af-table td, .af-table th { border: 1px solid #adb5bd; padding: 8px 10px; vertical-align: top; font-size: .85rem; }
+    .af-section { background: #e9ecef; font-size: .85rem; }
+    .af-subhead td { background: #f8f9fa; font-weight: 600; }
+    .af-label { font-weight: 500; background: #f8f9fa; }
+    .af-rating { width: 12%; text-align: center; }
+    .af-remarks { width: auto; }
+    @media print {
+        .no-print, .sidebar, .topbar { display: none !important; }
+        .assessment-form-sheet { box-shadow: none !important; border: none !important; }
+    }
+</style>
+{% endblock %}

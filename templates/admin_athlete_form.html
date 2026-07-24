@@ -1,0 +1,64 @@
+{% extends "layout.html" %}
+{% block title %}{{ 'Edit Athlete' if athlete else 'Add Athlete' }}{% endblock %}
+{% block page_content %}
+<div class="container-fluid py-4 px-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h4 class="fw-bold mb-1">{{ 'Edit Athlete' if athlete else 'Add Athlete' }}</h4>
+                    <p class="text-muted small mb-0">{{ 'Update athlete details' if athlete else 'Register a new athlete and assign a coach' }}</p>
+                </div>
+                <a href="{{ url_for('admin.admin_athletes') }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                    <i class="bi bi-arrow-left me-1"></i> Back
+                </a>
+            </div>
+
+    {{ flashed() }}
+
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4">
+                    <form method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="mb-3">
+                            <label class="form-label small fw-medium">Full Name</label>
+                            <input type="text" class="form-control" name="name" value="{{ athlete.name if athlete else '' }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-medium">Assigned Coach</label>
+                            <select class="form-select" name="coach_id" required>
+                                <option value="" disabled {{ 'selected' if not athlete }}>Select a coach</option>
+                                {% for coach_id, name in coaches %}
+                                <option value="{{ coach_id }}" {{ 'selected' if athlete and athlete.coach_id == coach_id }}>{{ name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-medium">Email</label>
+                            <input type="email" class="form-control" name="email" value="{{ athlete.email if athlete else '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-medium">Phone</label>
+                            <input type="text" class="form-control" name="phone" value="{{ athlete.phone if athlete else '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-medium">Date of Birth</label>
+                            <input type="date" class="form-control" name="dob" value="{{ athlete.dob if athlete else '' }}">
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label small fw-medium">Sport</label>
+                            <input type="text" class="form-control" name="sport" value="{{ athlete.sport if athlete else '' }}" placeholder="e.g. Basketball, Football, Swimming">
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary rounded-pill py-2 fw-medium">
+                                <i class="bi bi-{{ 'check-lg' if athlete else 'person-plus' }} me-1"></i>
+                                {{ 'Update Athlete' if athlete else 'Add Athlete' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

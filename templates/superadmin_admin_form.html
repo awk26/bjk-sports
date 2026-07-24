@@ -1,0 +1,51 @@
+{% extends "layout.html" %}
+{% block title %}{{ 'Edit Admin' if admin else 'Add Admin' }}{% endblock %}
+{% block page_content %}
+<div class="container-fluid py-4 px-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h4 class="fw-bold mb-1">{{ 'Edit Admin' if admin else 'Add Admin' }}</h4>
+                    <p class="text-muted small mb-0">{{ 'Update admin details' if admin else 'Create a new admin account' }}</p>
+                </div>
+                <a href="{{ url_for('superadmin.superadmin_admins') }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                    <i class="bi bi-arrow-left me-1"></i> Back
+                </a>
+            </div>
+
+    {{ flashed() }}
+
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4">
+                    <form method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="mb-3">
+                            <label class="form-label small fw-medium">Username</label>
+                            <input type="text" class="form-control" name="username" value="{{ admin.username if admin else '' }}" {{ 'readonly' if admin }} required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-medium">{{ 'New Password' if admin else 'Password' }}</label>
+                            <input type="password" class="form-control" name="password" placeholder="{{ 'Leave blank to keep current' if admin else '' }}" {{ 'required' if not admin }}>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-medium">Full Name</label>
+                            <input type="text" class="form-control" name="name" value="{{ admin.name if admin else '' }}" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label small fw-medium">Email</label>
+                            <input type="email" class="form-control" name="email" value="{{ admin.email if admin else '' }}">
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-dark rounded-pill py-2 fw-medium">
+                                <i class="bi bi-{{ 'check-lg' if admin else 'person-plus' }} me-1"></i>
+                                {{ 'Update Admin' if admin else 'Create Admin' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

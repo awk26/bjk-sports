@@ -1,0 +1,55 @@
+{% extends "layout.html" %}
+{% block title %}{{ 'Edit Coach' if coach else 'Add Coach' }}{% endblock %}
+{% block page_content %}
+<div class="container-fluid py-4 px-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h4 class="fw-bold mb-1">{{ 'Edit Coach' if coach else 'Add Coach' }}</h4>
+                    <p class="text-muted small mb-0">{{ 'Update coach details' if coach else 'Create a new coach account' }}</p>
+                </div>
+                <a href="{{ url_for('superadmin.superadmin_coaches') }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                    <i class="bi bi-arrow-left me-1"></i> Back
+                </a>
+            </div>
+
+    {{ flashed() }}
+
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4">
+                    <form method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="mb-3">
+                            <label class="form-label small fw-medium">Username</label>
+                            <input type="text" class="form-control" name="username" value="{{ coach.username if coach else '' }}" {{ 'readonly' if coach }} required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-medium">{{ 'New Password' if coach else 'Password' }}</label>
+                            <input type="password" class="form-control" name="password" placeholder="{{ 'Leave blank to keep current' if coach else '' }}" {{ 'required' if not coach }}>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-medium">Full Name</label>
+                            <input type="text" class="form-control" name="name" value="{{ coach.name if coach else '' }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-medium">Email</label>
+                            <input type="email" class="form-control" name="email" value="{{ coach.email if coach else '' }}">
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label small fw-medium">Specialty</label>
+                            <input type="text" class="form-control" name="specialty" value="{{ coach.specialty if coach else '' }}" placeholder="e.g. Basketball, Football, Swimming">
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-danger rounded-pill py-2 fw-medium">
+                                <i class="bi bi-{{ 'check-lg' if coach else 'person-plus' }} me-1"></i>
+                                {{ 'Update Coach' if coach else 'Create Coach' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

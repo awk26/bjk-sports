@@ -1,0 +1,363 @@
+{% extends "layout.html" %}
+{% block title %}Performance Analytics{% endblock %}
+{% block page_content %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500&display=swap" rel="stylesheet">
+
+<div class="container-fluid py-4 px-4 pd-wrap">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h4 class="fw-bold mb-1">Performance Analytics</h4>
+            <p class="text-muted small mb-0">Select an athlete below, or view the squad comparison at the bottom</p>
+        </div>
+        <a href="{{ url_for('coach.coach_athletes') }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+            <i class="bi bi-arrow-left me-1"></i> Back
+        </a>
+    </div>
+
+    {{ flashed() }}
+
+    {% if not dashboard.athletes %}
+    <div class="alert alert-info small">No athletes yet — add athletes first to see their performance dashboard here.</div>
+    {% else %}
+
+    <div id="roster"></div>
+
+    <div class="pd-card">
+        <div class="profile-row">
+            <div class="profile-left">
+                <div class="avatar" id="a-avatar"></div>
+                <div>
+                    <div class="name-row">
+                        <p id="a-name"></p>
+                        <span id="a-badge" class="pd-badge"></span>
+                    </div>
+                    <p id="a-meta"></p>
+                </div>
+            </div>
+            <div class="index-block">
+                <p class="index-label">Performance index</p>
+                <div style="display:flex;align-items:baseline;gap:8px;justify-content:flex-end;">
+                    <span class="index-value" id="a-index"></span>
+                    <span class="index-delta" id="a-delta"></span>
+                </div>
+                <p class="caption">Ratings 1&ndash;5, weighted 25/30/25/20, scaled to 100</p>
+            </div>
+        </div>
+        <div id="a-nodata" class="alert alert-secondary small mt-3 d-none mb-0">
+            No submitted assessments yet for this athlete &mdash; the dashboard below will populate after the first one is submitted.
+        </div>
+    </div>
+
+    <div id="a-body">
+        <div class="kpi-grid" id="kpis"></div>
+
+        <div class="two-col">
+            <div class="pd-card">
+                <p class="section-label">Category rating (1&ndash;5), previous vs current assessment</p>
+                <div style="position:relative;height:240px;">
+                    <canvas id="rangeChart"></canvas>
+                </div>
+                <div class="legend">
+                    <span><span class="swatch" style="background:#15803D;"></span>Improved</span>
+                    <span><span class="swatch" style="background:#C0362C;"></span>Declined</span>
+                </div>
+            </div>
+            <div class="pd-card">
+                <p class="section-label">Performance trend vs squad average</p>
+                <div style="position:relative;height:240px;">
+                    <canvas id="lineChart"></canvas>
+                </div>
+                <div class="legend">
+                    <span><span class="swatch" style="background:#2E74B5;"></span>Athlete</span>
+                    <span><span class="dash" style="background:#9AA5B4;"></span>Squad average</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="pd-card">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <p class="section-label mb-0">Attendance, recent assessments</p>
+                <span style="font-size:13px;font-weight:600;" id="a-attendance"></span>
+            </div>
+            <div id="attendance"></div>
+            <p class="caption">Each cell is one assessment period, graded by attendance % &mdash; P (&ge;90%), L (75&ndash;89%), A (&lt;75%). Hover for the exact %.</p>
+        </div>
+
+        <div class="pd-card">
+            <p class="section-label">Coaching recommendations</p>
+            <ul id="recs"></ul>
+        </div>
+    </div>
+
+    <div class="pd-card">
+        <p class="section-label">Squad comparison</p>
+        <table class="pd-table">
+            <thead>
+                <tr>
+                    <th style="width:28%;">Athlete</th>
+                    <th style="width:20%;">Sport</th>
+                    <th style="width:16%;text-align:right;">Index</th>
+                    <th style="width:16%;text-align:right;">&Delta;</th>
+                    <th style="width:20%;text-align:right;">Attendance</th>
+                </tr>
+            </thead>
+            <tbody id="squadRows"></tbody>
+            <tfoot id="squadFoot"></tfoot>
+        </table>
+    </div>
+
+    {% endif %}
+</div>
+
+<style>
+    .pd-wrap{
+        --navy:#1F3864; --navy-dark:#152747; --accent:#2E74B5; --accent-light:#DCE6F1;
+        --border:#E3E8EF; --text-secondary:#5B6472; --text-muted:#8A93A2;
+        --success:#15803D; --success-bg:#E7F5EC; --warning:#B45309; --warning-bg:#FDF1E0;
+        --danger:#C0362C; font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+        max-width:100%; overflow-x:hidden;
+    }
+    .pd-wrap, .pd-wrap *{ min-width:0; }
+    .pd-card{background:#fff;border-radius:12px;border:1px solid var(--border);box-shadow:0 1px 2px rgba(16,24,40,.04),0 1px 3px rgba(16,24,40,.06);padding:20px 24px;margin-bottom:20px;}
+    .section-label{font-size:13px;color:var(--text-secondary);margin:0 0 12px;font-weight:500;}
+    .caption{font-size:11.5px;color:var(--text-muted);margin:8px 0 0;}
+
+    #roster{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:20px;}
+    #roster button{flex:0 0 auto;padding:8px 16px;border-radius:999px;font-size:13px;font-family:inherit;cursor:pointer;background:#fff;color:#1A2333;border:1px solid var(--border);transition:all .15s ease;}
+    #roster button:hover{border-color:var(--accent);}
+    #roster button.active{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:500;}
+
+    .profile-row{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
+    .profile-left{display:flex;align-items:center;gap:14px;}
+    .avatar{width:52px;height:52px;border-radius:50%;background:var(--accent-light);color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:17px;flex:0 0 auto;}
+    .name-row{display:flex;align-items:center;gap:10px;}
+    #a-name{font-size:19px;font-weight:600;margin:0;}
+    #a-meta{font-size:13px;color:var(--text-secondary);margin:3px 0 0;}
+    .pd-badge{font-size:12px;padding:3px 11px;border-radius:999px;font-weight:600;}
+    .pd-badge.ok{background:var(--success-bg);color:var(--success);}
+    .pd-badge.warn{background:var(--warning-bg);color:var(--warning);}
+    .pd-badge.neutral{background:#EEF1F5;color:var(--text-secondary);}
+
+    .index-block{text-align:right;}
+    .index-label{font-size:13px;color:var(--text-secondary);margin:0 0 2px;}
+    .index-value{font-family:'Fraunces',serif;font-size:44px;font-weight:500;line-height:1;color:#1A2333;}
+    .index-delta{font-size:13px;font-weight:600;}
+
+    .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:20px;}
+    .kpi-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:16px;box-shadow:0 1px 2px rgba(16,24,40,.04),0 1px 3px rgba(16,24,40,.06);}
+    .kpi-card i{font-size:19px;color:var(--accent);}
+    .kpi-label{font-size:13px;color:var(--text-secondary);margin:10px 0 2px;}
+    .kpi-value{font-size:25px;font-weight:600;font-variant-numeric:tabular-nums;color:#1A2333;}
+    .kpi-delta{font-size:12px;margin-top:3px;font-weight:600;}
+
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;min-width:0;}
+    @media (max-width:820px){.two-col{grid-template-columns:1fr;}}
+
+    canvas{max-width:100% !important;}
+
+    .legend{display:flex;gap:16px;margin-top:10px;font-size:12px;color:var(--text-secondary);}
+    .legend span{display:flex;align-items:center;gap:5px;}
+    .swatch{width:10px;height:10px;border-radius:2px;display:inline-block;}
+    .dash{width:14px;height:2px;display:inline-block;}
+
+    #attendance{display:flex;gap:5px;flex-wrap:wrap;}
+    .att-cell{width:24px;height:24px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;}
+
+    #recs{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px;}
+    #recs li{display:flex;gap:10px;font-size:14.5px;line-height:1.6;color:#1A2333;}
+    #recs i{font-size:17px;color:var(--accent);flex:0 0 auto;margin-top:3px;}
+
+    .pd-table{width:100%;border-collapse:collapse;font-size:13.5px;}
+    .pd-table th{text-align:left;padding:10px 8px;color:var(--text-secondary);font-weight:600;border-bottom:2px solid var(--border);font-size:12.5px;text-transform:uppercase;letter-spacing:.03em;}
+    .pd-table td{padding:10px 8px;border-bottom:1px solid var(--border);color:#1A2333;}
+    .pd-table tbody tr{cursor:pointer;transition:background .12s ease;}
+    .pd-table tbody tr:hover{background:#F7F9FC;}
+    .pd-table tbody tr.active{background:var(--accent-light);}
+    .pd-table tfoot td{font-weight:600;border-top:2px solid var(--border);border-bottom:none;background:#FAFBFD;}
+    .pd-table .num{text-align:right;font-variant-numeric:tabular-nums;}
+</style>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+(function () {
+    var athletes = {{ dashboard.athletes | tojson }};
+    var squadAvgIndex = {{ dashboard.squad_avg_index | tojson }};
+    var squadAvgTrend = {{ dashboard.squad_avg_trend | tojson }};
+    if (!athletes.length) return;
+
+    var selectedId = athletes[0].id;
+    var rangeChart, lineChart;
+
+    function initials(name) { return name.split(' ').map(function (p) { return p[0]; }).join('').slice(0, 2).toUpperCase(); }
+    function fmtDelta(d) {
+        var up = d >= 0;
+        return '<i class="ti ti-trending-' + (up ? 'up' : 'down') + '"></i> ' + (up ? '+' : '') + d;
+    }
+    function attColor(pct) {
+        if (pct === null || pct === undefined) return '#9AA5B4';
+        return pct >= 90 ? '#15803D' : pct >= 75 ? '#D97706' : '#C0362C';
+    }
+
+    function renderRoster() {
+        var el = document.getElementById('roster');
+        el.innerHTML = athletes.map(function (a) {
+            return '<button data-id="' + a.id + '" class="' + (a.id === selectedId ? 'active' : '') + '">' + a.name + '</button>';
+        }).join('');
+        el.querySelectorAll('button').forEach(function (b) {
+            b.addEventListener('click', function () { selectAthlete(parseInt(b.dataset.id)); });
+        });
+    }
+
+    function renderKpis(a) {
+        var cats = [
+            { key: 'physical', label: 'Physical', icon: 'ti-bolt' },
+            { key: 'technical', label: 'Technical', icon: 'ti-target-arrow' },
+            { key: 'tactical', label: 'Tactical', icon: 'ti-chess-knight' },
+            { key: 'behavioral', label: 'Behavioural', icon: 'ti-mood-smile' }
+        ];
+        document.getElementById('kpis').innerHTML = cats.map(function (c) {
+            var d = Math.round((a.cat[c.key] - a.prev_cat[c.key]) * 10) / 10;
+            var color = d >= 0 ? 'var(--success)' : 'var(--danger)';
+            return '<div class="kpi-card"><i class="ti ' + c.icon + '"></i><p class="kpi-label">' + c.label + '</p>' +
+                '<p class="kpi-value">' + a.cat[c.key].toFixed(1) + '<span style="font-size:13px;color:var(--text-muted);font-weight:400;"> /5</span></p>' +
+                '<p class="kpi-delta" style="color:' + color + ';">' + (d >= 0 ? '+' : '') + d.toFixed(1) + ' vs last</p></div>';
+        }).join('');
+    }
+
+    function renderAttendance(a) {
+        var cells = a.attendance_recent || [];
+        document.getElementById('attendance').innerHTML = cells.length ? cells.map(function (pct, i) {
+            var letter = pct >= 90 ? 'P' : pct >= 75 ? 'L' : 'A';
+            var label = letter === 'P' ? 'Good' : letter === 'L' ? 'Fair' : 'Poor';
+            return '<div class="att-cell" title="Assessment ' + (i + 1) + ': ' + label + ' (' + Math.round(pct) + '%)" style="background:' + attColor(pct) + ';">' + letter + '</div>';
+        }).join('') : '<span class="text-muted small">No finalized assessments yet.</span>';
+        document.getElementById('a-attendance').textContent = (a.attendance_pct !== null && a.attendance_pct !== undefined) ? a.attendance_pct + '% avg attendance' : '';
+    }
+
+    function renderRecs(a) {
+        var el = document.getElementById('recs');
+        if (!a.recs || !a.recs.length) {
+            el.innerHTML = '<li><i class="ti ti-bulb"></i><span class="text-muted">No recommendations yet &mdash; submit an assessment to generate insights.</span></li>';
+            return;
+        }
+        el.innerHTML = a.recs.map(function (r) {
+            return '<li><i class="ti ti-bulb"></i><span>' + r + '</span></li>';
+        }).join('');
+    }
+
+    function renderSquad() {
+        document.getElementById('squadRows').innerHTML = athletes.map(function (a) {
+            var dColor = a.delta >= 0 ? 'var(--success)' : 'var(--danger)';
+            var att = (a.attendance_pct !== null && a.attendance_pct !== undefined) ? a.attendance_pct + '%' : '-';
+            var idx = a.has_data ? a.index : '-';
+            var delta = a.has_data ? ((a.delta >= 0 ? '+' : '') + a.delta) : '-';
+            return '<tr data-id="' + a.id + '" class="' + (a.id === selectedId ? 'active' : '') + '">' +
+                '<td>' + a.name + '</td><td style="color:var(--text-secondary);">' + a.sport + '</td>' +
+                '<td class="num">' + idx + '</td>' +
+                '<td class="num" style="color:' + (a.has_data ? dColor : 'var(--text-secondary)') + ';">' + delta + '</td>' +
+                '<td class="num" style="color:var(--text-secondary);">' + att + '</td></tr>';
+        }).join('');
+        document.getElementById('squadFoot').innerHTML = '<tr><td>Squad average</td><td></td><td class="num">' + squadAvgIndex + '</td><td></td><td></td></tr>';
+        document.querySelectorAll('#squadRows tr').forEach(function (r) {
+            r.addEventListener('click', function () { selectAthlete(parseInt(r.dataset.id)); });
+        });
+    }
+
+    function selectAthlete(id) {
+        selectedId = id;
+        var a = athletes.find(function (x) { return x.id === id; });
+
+        document.getElementById('a-avatar').textContent = initials(a.name);
+        document.getElementById('a-name').textContent = a.name;
+        document.getElementById('a-meta').textContent = a.sport + (a.age ? (', age ' + a.age) : '');
+        document.getElementById('a-index').textContent = a.has_data ? a.index : '-';
+
+        var deltaEl = document.getElementById('a-delta');
+        var badgeEl = document.getElementById('a-badge');
+        var noDataEl = document.getElementById('a-nodata');
+        var bodyEl = document.getElementById('a-body');
+
+        if (!a.has_data) {
+            deltaEl.innerHTML = '';
+            badgeEl.textContent = 'No data yet';
+            badgeEl.className = 'pd-badge neutral';
+            noDataEl.classList.remove('d-none');
+            bodyEl.classList.add('d-none');
+        } else {
+            deltaEl.innerHTML = fmtDelta(a.delta);
+            deltaEl.style.color = a.delta >= 0 ? '#15803D' : '#C0362C';
+            var needsAttention = a.delta < 0 || (a.attendance_pct !== null && a.attendance_pct < 75);
+            badgeEl.textContent = needsAttention ? 'Needs attention' : 'On track';
+            badgeEl.className = 'pd-badge ' + (needsAttention ? 'warn' : 'ok');
+            noDataEl.classList.add('d-none');
+            bodyEl.classList.remove('d-none');
+
+            renderKpis(a);
+            renderAttendance(a);
+            renderRecs(a);
+
+            var cats = ['physical', 'technical', 'tactical', 'behavioral'];
+            rangeChart.data.datasets[0].data = cats.map(function (k) { return [a.prev_cat[k], a.cat[k]]; });
+            rangeChart.data.datasets[0].backgroundColor = cats.map(function (k) { return a.cat[k] >= a.prev_cat[k] ? '#15803D' : '#C0362C'; });
+            rangeChart.update();
+
+            lineChart.data.labels = a.trend.map(function (_, i) { return 'A' + (i + 1); });
+            lineChart.data.datasets[0].data = a.trend;
+            lineChart.data.datasets[1].data = squadAvgTrend.slice(0, a.trend.length);
+            lineChart.update();
+        }
+
+        renderRoster();
+        renderSquad();
+    }
+
+    renderRoster();
+    renderSquad();
+
+    rangeChart = new Chart(document.getElementById('rangeChart'), {
+        type: 'bar',
+        data: {
+            labels: ['Physical', 'Technical', 'Tactical', 'Behavioural'],
+            datasets: [{ data: [], backgroundColor: [], barThickness: 20, borderRadius: 4 }]
+        },
+        options: {
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { x: { min: 0, max: 5, ticks: { stepSize: 1 }, grid: { color: '#E3E8EF' } }, y: { grid: { display: false } } }
+        }
+    });
+
+    lineChart = new Chart(document.getElementById('lineChart'), {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                { label: 'Athlete', data: [], borderColor: '#2E74B5', backgroundColor: 'rgba(46,116,181,0.1)', borderWidth: 2, fill: true, tension: 0.3, pointRadius: 3, pointBackgroundColor: '#2E74B5' },
+                { label: 'Squad average', data: [], borderColor: '#9AA5B4', borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.3 }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { min: 0, max: 100, grid: { color: '#E3E8EF' } }, x: { grid: { display: false } } }
+        }
+    });
+
+    selectAthlete(selectedId);
+
+    // Keep charts correctly sized on window resize and on sidebar collapse/expand
+    // (the sidebar toggle doesn't fire a window 'resize' event on its own).
+    function refitCharts() {
+        if (rangeChart) rangeChart.resize();
+        if (lineChart) lineChart.resize();
+    }
+    window.addEventListener('resize', refitCharts);
+    var sidebarEl = document.getElementById('sidebar');
+    if (sidebarEl && window.ResizeObserver) {
+        new ResizeObserver(refitCharts).observe(sidebarEl);
+    }
+})();
+</script>
+{% endblock %}

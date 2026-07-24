@@ -1,0 +1,103 @@
+{% extends "layout.html" %}
+{% block title %}Coach Panel{% endblock %}
+{% block page_content %}
+<div class="container-fluid py-4 px-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-1">Coach Panel</h4>
+            <p class="text-muted small mb-0">Manage your athletes and training programs</p>
+        </div>
+    </div>
+
+    {{ flashed() }}
+
+    <div class="row g-4">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-3 bg-primary bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-people fs-4 text-primary"></i>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold mb-0">My Athletes</h6>
+                            <small class="text-muted">{{ athletes|length }} registered</small>
+                        </div>
+                    </div>
+                    <p class="small text-muted mb-3">View, add, edit, or archive your athletes and their profiles.</p>
+                    <div class="mt-auto">
+                        <a href="{{ url_for('coach.coach_athletes') }}" class="btn btn-primary btn-sm rounded-pill px-4">
+                            <i class="bi bi-people me-1"></i> Manage Athletes
+                        </a>
+                        <a href="{{ url_for('coach.coach_athlete_create') }}" class="btn btn-outline-primary btn-sm rounded-pill px-4 ms-2">
+                            <i class="bi bi-person-plus me-1"></i> Add New
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-3 bg-success bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-journal-text fs-4 text-success"></i>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold mb-0">Training Plans</h6>
+                            <small class="text-muted">Create & manage</small>
+                        </div>
+                    </div>
+                    <p class="small text-muted mb-3">Design training programs and workout plans for your athletes.</p>
+                    <div class="mt-auto">
+                        <button class="btn btn-success btn-sm rounded-pill px-4" disabled>Manage Plans</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-3 bg-warning bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-calendar-check fs-4 text-warning"></i>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold mb-0">Attendance</h6>
+                            <small class="text-muted">Track sessions</small>
+                        </div>
+                    </div>
+                    <p class="small text-muted mb-3">Record and monitor athlete attendance for training sessions.</p>
+                    <div class="mt-auto">
+                        <button class="btn btn-warning btn-sm rounded-pill px-4" disabled>Track Attendance</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-3 bg-info bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-graph-up fs-4 text-info"></i>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold mb-0">Performance</h6>
+                            <small class="text-muted">Analytics & reports</small>
+                        </div>
+                    </div>
+                    <p class="small text-muted mb-3">View performance metrics, progress reports, and analytics.</p>
+                    <div class="mt-auto">
+                        <a href="{{ url_for('coach.coach_analytics') }}" class="btn btn-info btn-sm rounded-pill px-4">
+                            <i class="bi bi-bar-chart-line me-1"></i> View Reports
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M4.5 12.5l4-4 4 4 4-4"/><path d="M8.5 8.5v9"/><path d="M16.5 8.5v9"/><path d="M12.5 17.5h-8"/>
+            </svg>
+            <span class="brand-text">BJK SPORTS</span>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('dashboard') }}"
+               class="nav-link {{ 'active' if request.endpoint == 'dashboard' }}">
+                <i class="bi bi-speedometer2"></i><span class="nav-text">Dashboard</span>
+            </a>
+
+            {% if session.user.role == 'superadmin' %}
+            <div class="nav-section">Super Admin</div>
+            <a href="{{ url_for('superadmin.superadmin_admins') }}"
+               class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('superadmin.superadmin_admin') }}">
+                <i class="bi bi-person-badge"></i><span class="nav-text">Admins</span>
+            </a>
+            <a href="{{ url_for('superadmin.superadmin_coaches') }}"
+               class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('superadmin.superadmin_coach') }}">
+                <i class="bi bi-people"></i><span class="nav-text">Coaches</span>
+            </a>
+            <a href="{{ url_for('superadmin.superadmin_athletes') }}"
+               class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('superadmin.superadmin_athlete') }}">
+                <i class="bi bi-person-lines-fill"></i><span class="nav-text">Athletes</span>
+            </a>
+
+            {% elif session.user.role == 'admin' %}
+            <div class="nav-section">Admin</div>
+            <a href="{{ url_for('admin.admin_coaches') }}"
+               class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.admin_coach') }}">
+                <i class="bi bi-people"></i><span class="nav-text">Coaches</span>
+            </a>
+            <a href="{{ url_for('admin.admin_athletes') }}"
+               class="nav-link {{ 'active' if request.endpoint == 'admin.admin_athletes' }}">
+                <i class="bi bi-person-lines-fill"></i><span class="nav-text">Athletes</span>
+            </a>
+
+            {% elif session.user.role == 'coach' %}
+            <div class="nav-section">Coach</div>
+            <a href="{{ url_for('coach.coach_athletes') }}"
+               class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('coach.coach_athlete') }}">
+                <i class="bi bi-person-lines-fill"></i><span class="nav-text">My Athletes</span>
+            </a>
+            <a href="{{ url_for('coach.coach_analytics') }}"
+               class="nav-link {{ 'active' if request.endpoint == 'coach.coach_analytics' }}">
+                <i class="bi bi-bar-chart-line"></i><span class="nav-text">Analytics</span>
+            </a>
+            {% endif %}
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="{{ url_for('auth.logout') }}" class="nav-link">
+                <i class="bi bi-box-arrow-right"></i><span class="nav-text">Logout</span>
+            </a>
+        </div>
+    </aside>
+
+    <div class="app-main">
+        <header class="app-topbar">
+            <button class="btn btn-sm btn-outline-secondary rounded-circle" id="sidebarToggle" title="Toggle menu" type="button">
+                <i class="bi bi-list"></i>
+            </button>
+            <div class="ms-auto d-flex align-items-center gap-2">
+                <span class="badge role-badge role-badge-{{ session.user.role }} px-3 py-2 rounded-pill">
+                    <i class="bi bi-shield-check me-1"></i>{{ session.user.name }} &middot; {{ session.user.role|title }}
+                </span>
+            </div>
+        </header>
+
+        <div class="app-content">
+            {% block page_content %}{% endblock %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .app-shell { display: flex; min-height: 100vh; align-items: stretch; }
+
+    .sidebar {
+        width: 250px; flex-shrink: 0; background: #1a1d29; color: #fff;
+        display: flex; flex-direction: column; transition: width .2s ease;
+        position: sticky; top: 0; height: 100vh; overflow-x: hidden; overflow-y: auto;
+        z-index: 20;
+    }
+    .sidebar.collapsed { width: 72px; }
+
+    .sidebar-brand { display: flex; align-items: center; gap: .6rem; padding: 1.25rem 1.15rem; white-space: nowrap; }
+    .sidebar-nav { flex: 1; padding: .25rem .6rem; display: flex; flex-direction: column; gap: .15rem; }
+    .sidebar-footer { padding: .6rem; border-top: 1px solid rgba(255,255,255,.08); }
+
+    .nav-section {
+        color: rgba(255,255,255,.4); font-size: .68rem; text-transform: uppercase;
+        letter-spacing: .06em; padding: .9rem .8rem .3rem; white-space: nowrap;
+    }
+    .sidebar.collapsed .nav-section { visibility: hidden; height: .6rem; padding: .3rem 0 0; }
+
+    .nav-link {
+        display: flex; align-items: center; gap: .75rem; color: rgba(255,255,255,.75);
+        padding: .6rem .8rem; border-radius: .6rem; font-size: .875rem;
+        white-space: nowrap; text-decoration: none;
+    }
+    .nav-link:hover { background: rgba(255,255,255,.08); color: #fff; }
+    .nav-link.active { background: #0d6efd; color: #fff; }
+    .nav-link i { font-size: 1.05rem; width: 1.25rem; text-align: center; flex-shrink: 0; }
+    .sidebar.collapsed .nav-text { display: none; }
+    .sidebar.collapsed .sidebar-brand .brand-text { display: none; }
+
+    .app-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .app-topbar {
+        display: flex; align-items: center; padding: .7rem 1.5rem;
+        background: #fff; border-bottom: 1px solid #eee; position: sticky; top: 0; z-index: 10;
+    }
+    .app-content { flex: 1; }
+
+    .role-badge-superadmin { background: rgba(26,29,41,.1); color: #1a1d29; }
+    .role-badge-admin { background: rgba(220,53,69,.1); color: #dc3545; }
+    .role-badge-coach { background: rgba(13,110,253,.1); color: #0d6efd; }
+
+    @media (max-width: 768px) {
+        .sidebar { position: fixed; left: -250px; height: 100vh; }
+        .sidebar.mobile-open { left: 0; }
+        .app-shell { display: block; }
+    }
+</style>
+
+<script>
+(function () {
+    var sidebar = document.getElementById('sidebar');
+    var toggle = document.getElementById('sidebarToggle');
+    var isMobile = function () { return window.innerWidth <= 768; };
+
+    if (!isMobile() && localStorage.getItem('bjk_sidebar_collapsed') === '1') {
+        sidebar.classList.add('collapsed');
+    }
+
+    toggle.addEventListener('click', function () {
+        if (isMobile()) {
+            sidebar.classList.toggle('mobile-open');
+        } else {
+            sidebar.classList.toggle('collapsed');
+            localStorage.setItem('bjk_sidebar_collapsed', sidebar.classList.contains('collapsed') ? '1' : '0');
+        }
+    });
+})();
+</script>
+{% endblock %}

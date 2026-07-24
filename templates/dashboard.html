@@ -1,0 +1,132 @@
+{% extends "layout.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_content %}
+<div class="container-fluid py-4 px-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-1">Dashboard</h4>
+            <p class="text-muted small mb-0">Welcome, {{ user.name }}</p>
+        </div>
+    </div>
+
+    {{ flashed() }}
+
+    <div class="row g-4">
+        {% if user.role == 'superadmin' %}
+
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-3 bg-dark bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-person-badge fs-4 text-dark"></i>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold mb-0">Admins</h6>
+                            <small class="text-muted">Manage admins</small>
+                        </div>
+                    </div>
+                    <p class="small text-muted mb-3">Create, edit, and archive admin accounts.</p>
+                    <a href="{{ url_for('superadmin.superadmin_admins') }}" class="btn btn-outline-dark btn-sm w-100 rounded-pill">View Admins</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-3 bg-danger bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-people fs-4 text-danger"></i>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold mb-0">Coaches</h6>
+                            <small class="text-muted">Manage coaches</small>
+                        </div>
+                    </div>
+                    <p class="small text-muted mb-3">Create, edit, and archive coach accounts.</p>
+                    <a href="{{ url_for('superadmin.superadmin_coaches') }}" class="btn btn-outline-danger btn-sm w-100 rounded-pill">View Coaches</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-3 bg-primary bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-person-lines-fill fs-4 text-primary"></i>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold mb-0">Athletes</h6>
+                            <small class="text-muted">Manage athletes</small>
+                        </div>
+                    </div>
+                    <p class="small text-muted mb-3">View and manage every athlete across all coaches.</p>
+                    <a href="{{ url_for('superadmin.superadmin_athletes') }}" class="btn btn-outline-primary btn-sm w-100 rounded-pill">View Athletes</a>
+                </div>
+            </div>
+        </div>
+
+        {% elif user.role == 'admin' %}
+
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-3 bg-danger bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-people fs-4 text-danger"></i>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold mb-0">Coaches</h6>
+                            <small class="text-muted">Manage coaches</small>
+                        </div>
+                    </div>
+                    <p class="small text-muted mb-3">Create, edit, and archive coach accounts.</p>
+                    <a href="{{ url_for('admin.admin_coaches') }}" class="btn btn-outline-danger btn-sm w-100 rounded-pill">View Coaches</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-3 bg-primary bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-people fs-4 text-primary"></i>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold mb-0">Athletes</h6>
+                            <small class="text-muted">Manage athletes</small>
+                        </div>
+                    </div>
+                    <p class="small text-muted mb-3">View and manage athlete profiles across all coaches.</p>
+                    <a href="{{ url_for('admin.admin_athletes') }}" class="btn btn-outline-primary btn-sm w-100 rounded-pill">View Athletes</a>
+                </div>
+            </div>
+        </div>
+
+        {% elif user.role == 'coach' %}
+
+        <div class="col-md-6 mx-auto">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-3 bg-primary bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-people fs-4 text-primary"></i>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold mb-0">Athletes</h6>
+                            <small class="text-muted">Manage your athletes</small>
+                        </div>
+                    </div>
+                    <p class="small text-muted mb-3">View, add, edit, or archive your athlete profiles.</p>
+                    <a href="{{ url_for('coach.coach_athletes') }}" class="btn btn-outline-primary btn-sm w-100 rounded-pill">View Athletes</a>
+                </div>
+            </div>
+        </div>
+
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
