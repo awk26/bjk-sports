@@ -20,7 +20,7 @@
             <p class="text-muted small mb-0">{{ athlete.name }} &middot; {{ assessment.assessment_date }}</p>
         </div>
         <div class="d-flex gap-2">
-            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3" onclick="window.print()">
+            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3" id="printBtn">
                 <i class="bi bi-printer me-1"></i> Print
             </button>
             <a href="{{ url_for('coach.coach_assessment_history', athlete_id=athlete.id) }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
@@ -145,7 +145,7 @@
     </div>
 </div>
 
-<style>
+<style nonce="{{ csp_nonce() }}">
     .af-table { border: 1px solid #adb5bd; }
     .af-table td, .af-table th { border: 1px solid #adb5bd; padding: 8px 10px; vertical-align: top; font-size: .85rem; }
     .af-section { background: #e9ecef; font-size: .85rem; }
@@ -158,4 +158,7 @@
         .assessment-form-sheet { box-shadow: none !important; border: none !important; }
     }
 </style>
+<script nonce="{{ csp_nonce() }}">
+    document.getElementById('printBtn').addEventListener('click', function () { window.print(); });
+</script>
 {% endblock %}

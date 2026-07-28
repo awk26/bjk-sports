@@ -556,6 +556,7 @@ def get_squad_performance_dashboard(coach_id: int) -> dict:
             "sport": ath.get("sport") or "-",
             "age": age,
             "has_data": n > 0,
+            "has_prev": n >= 2,
             "cat": cat_current,
             "prev_cat": cat_prev,
             "trend": index_trend,

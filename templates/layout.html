@@ -79,7 +79,7 @@
     </div>
 </div>
 
-<style>
+<style nonce="{{ csp_nonce() }}">
     .app-shell { display: flex; min-height: 100vh; align-items: stretch; }
 
     .sidebar {
@@ -129,7 +129,7 @@
     }
 </style>
 
-<script>
+<script nonce="{{ csp_nonce() }}">
 (function () {
     var sidebar = document.getElementById('sidebar');
     var toggle = document.getElementById('sidebarToggle');

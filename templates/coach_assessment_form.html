@@ -318,7 +318,7 @@
     </form>
 </div>
 
-<style>
+<style nonce="{{ csp_nonce() }}">
     .rating-btn.active { background-color: #0d6efd; color: #fff; }
     .step-pill {
         width: 28px; height: 28px; border-radius: 50%; display: flex;
@@ -333,7 +333,7 @@
     .rating-group.rating-invalid { outline: 1px solid #dc3545; border-radius: .375rem; }
 </style>
 
-<script>
+<script nonce="{{ csp_nonce() }}">
 (function () {
     var TOTAL_STEPS = 10;
     var STEP_LABELS = ["Basic/Attendance", "Physical", "Technical", "Tactical", "Behavioral",
