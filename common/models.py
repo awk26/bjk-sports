@@ -542,13 +542,6 @@ def get_squad_performance_dashboard(coach_id: int) -> dict:
         avg_attendance = analytics["kpi"]["avg_attendance_pct"]
 
         recs = []
-        if n:
-            latest_full = _latest_finalized_assessment(ath["id"], coach_id)
-            recs = generate_coaching_recommendations(
-                athlete_id=ath["id"], name=ath["name"], sport=ath.get("sport"), age=age,
-                cat_current=cat_current, cat_prev=cat_prev, attendance_pct=avg_attendance,
-                extra=latest_full or {}, fallback_fn=_build_recommendations,
-            )
 
         athletes.append({
             "id": ath["id"],
@@ -581,6 +574,160 @@ def get_squad_performance_dashboard(coach_id: int) -> dict:
         "squad_avg_index": squad_avg_index,
         "squad_avg_trend": squad_avg_trend,
     }
+
+
+def get_athlete_recommendations(athlete_id: int, coach_id: int) -> list[str]:
+    ath = get_athlete_by_id(athlete_id)
+    if not ath or ath["coach_id"] != coach_id:
+        return []
+
+    age, _ = compute_age_and_focus(ath.get("dob"))
+    analytics = get_athlete_analytics(athlete_id, coach_id)
+    cat_trend = analytics["category_trend"]
+    n = len(cat_trend["labels"])
+
+    cats = list(CATEGORY_LABELS.keys())
+    if n == 0:
+        return []
+
+    cat_current = {c: cat_trend[c][-1] for c in cats}
+    prev_i = -2 if n >= 2 else -1
+    cat_prev = {c: cat_trend[c][prev_i] for c in cats}
+    avg_attendance = analytics["kpi"]["avg_attendance_pct"]
+
+    latest_full = _latest_finalized_assessment(athlete_id, coach_id)
+    recs = generate_coaching_recommendations(
+        athlete_id=athlete_id, name=ath["name"], sport=ath.get("sport"), age=age,
+        cat_current=cat_current, cat_prev=cat_prev, attendance_pct=avg_attendance,
+        extra=latest_full or {}, fallback_fn=_build_recommendations,
+    )
+    return recs
+
+
+# ---------------------------------------------------------------------------
+# Coach-facing top-level Dashboard stats (dashboard.html)
+# ---------------------------------------------------------------------------
+
+def get_coach_dashboard_stats(coach_id: int) -> dict:
+    """Powers the coach's top-level Dashboard: KPI cards (total athletes,
+    total sports, total sessions planned/attended) + a sport-wise breakdown
+    chart. Backed by sp_coach_dashboard_stats / sp_coach_dashboard_sport_breakdown
+    (see common/coach_dashboard_stats.sql)."""
+
+    kpi_rows = db.call_proc("sp_coach_dashboard_stats", (coach_id,))["rows"]
+    kpi = kpi_rows[0] if kpi_rows else {}
+
+    breakdown_rows = db.call_proc("sp_coach_dashboard_sport_breakdown", (coach_id,))["rows"]
+
+    return {
+        "athlete_count": kpi.get("athlete_count") or 0,
+        "sport_count": kpi.get("sport_count") or 0,
+        "sessions_planned_total": kpi.get("sessions_planned_total") or 0,
+        "sessions_attended_total": kpi.get("sessions_attended_total") or 0,
+        "sport_breakdown": {
+            "labels": [row["sport"] for row in breakdown_rows],
+            "athlete_counts": [row["athlete_count"] for row in breakdown_rows],
+            "sessions_planned": [row["sessions_planned"] for row in breakdown_rows],
+            "sessions_attended": [row["sessions_attended"] for row in breakdown_rows],
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
+# Superadmin-facing top-level Dashboard stats (dashboard.html)
+# ---------------------------------------------------------------------------
+
+def get_superadmin_dashboard_stats() -> dict:
+    """Powers the superadmin's top-level Dashboard: org-wide KPI cards
+    (admins/coaches/athletes/sports/sessions) + a sport-wise breakdown
+    across every coach. Backed by sp_superadmin_dashboard_stats /
+    sp_superadmin_dashboard_sport_breakdown / sp_superadmin_dashboard_coach_sport_matrix
+    (see common/superadmin_dashboard_stats.sql)."""
+
+    kpi_rows = db.call_proc("sp_superadmin_dashboard_stats", ())["rows"]
+    kpi = kpi_rows[0] if kpi_rows else {}
+
+    breakdown_rows = db.call_proc("sp_superadmin_dashboard_sport_breakdown", ())["rows"]
+
+    matrix_rows = db.call_proc("sp_superadmin_dashboard_coach_sport_matrix", ())["rows"]
+    coaches_by_sport = {}
+    for row in matrix_rows:
+        coaches_by_sport.setdefault(row["coach_name"], {})[row["sport"]] = row["athlete_count"]
+    sport_labels = [row["sport"] for row in breakdown_rows]
+    coach_matrix = [
+        {"coach_name": name, "counts": [sports.get(s, 0) for s in sport_labels]}
+        for name, sports in sorted(coaches_by_sport.items())
+    ]
+
+    return {
+        "admin_count": kpi.get("admin_count") or 0,
+        "coach_count": kpi.get("coach_count") or 0,
+        "athlete_count": kpi.get("athlete_count") or 0,
+        "sport_count": kpi.get("sport_count") or 0,
+        "sessions_planned_total": kpi.get("sessions_planned_total") or 0,
+        "sessions_attended_total": kpi.get("sessions_attended_total") or 0,
+        "avg_attendance_pct": _round_or_none(kpi.get("avg_attendance_pct"), 1),
+        "sport_breakdown": {
+            "labels": sport_labels,
+            "athlete_counts": [row["athlete_count"] for row in breakdown_rows],
+            "coach_counts": [row["coach_count"] for row in breakdown_rows],
+            "sessions_planned": [row["sessions_planned"] for row in breakdown_rows],
+            "sessions_attended": [row["sessions_attended"] for row in breakdown_rows],
+            "avg_attendance_pct": [row["avg_attendance_pct"] or 0 for row in breakdown_rows],
+        },
+        "coach_sport_matrix": {
+            "sports": sport_labels,
+            "coaches": coach_matrix,
+        },
+    }
+
+
+def get_superadmin_dashboard_stats_with_extras() -> dict:
+    """get_superadmin_dashboard_stats() plus the shared leaderboard / age /
+    activity widgets. Kept separate from get_superadmin_dashboard_stats()
+    itself so existing callers are unaffected."""
+    stats = get_superadmin_dashboard_stats()
+    stats.update(_org_dashboard_extras())
+    return stats
+
+
+def _org_dashboard_extras() -> dict:
+    """Shared by admin + superadmin dashboards: top-athlete leaderboard,
+    age distribution, and recent activity (audit log). Backed by
+    common/org_dashboard_extra.sql."""
+    top_rows = db.call_proc("sp_org_dashboard_top_athletes", (10,))["rows"]
+    age_rows = db.call_proc("sp_org_dashboard_age_distribution", ())["rows"]
+    activity = list_audit_log(limit=8)
+
+    return {
+        "top_athletes": [
+            {
+                "athlete_id": r["athlete_id"],
+                "athlete_name": r["athlete_name"],
+                "sport": r["sport"] or "-",
+                "coach_name": r["coach_name"],
+                "avg_rating": _round_or_none(r["avg_rating"], 2),
+                "attendance_pct": _round_or_none(r["attendance_pct"]),
+                "talent_category": r["talent_category"],
+            }
+            for r in top_rows
+        ],
+        "age_distribution": {
+            "labels": [r["age_group"] for r in age_rows],
+            "values": [r["athlete_count"] for r in age_rows],
+        },
+        "recent_activity": activity,
+    }
+
+
+def get_admin_dashboard_stats() -> dict:
+    """Powers the admin's premium top-level Dashboard: same org-wide KPI
+    cards, sport-wise breakdown, top-athlete leaderboard, age distribution,
+    and recent activity as the superadmin dashboard (admins share the same
+    coach/athlete visibility, minus admin-account management)."""
+    stats = get_superadmin_dashboard_stats()
+    stats.update(_org_dashboard_extras())
+    return stats
 
 
 # ---------------------------------------------------------------------------

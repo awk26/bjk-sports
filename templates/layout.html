@@ -1,12 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
+{% set role_accent = {'superadmin': '#7C3AED', 'admin': '#22C55E', 'coach': '#2563EB'} %}
+{% set accent = role_accent.get(session.user.role, '#2563EB') %}
 <div class="app-shell">
-    <aside class="sidebar" id="sidebar">
+    <aside class="sidebar" id="sidebar" style="--role-accent: {{ accent }};">
         <div class="sidebar-brand">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M4.5 12.5l4-4 4 4 4-4"/><path d="M8.5 8.5v9"/><path d="M16.5 8.5v9"/><path d="M12.5 17.5h-8"/>
-            </svg>
+            <img src="{{ url_for('static', filename='image/JIA_1.png') }}" alt="BJK SPORTS">
             <span class="brand-text">BJK SPORTS</span>
+            <span class="brand-dot"></span>
         </div>
 
         <nav class="sidebar-nav">
@@ -66,10 +67,39 @@
             <button class="btn btn-sm btn-outline-secondary rounded-circle" id="sidebarToggle" title="Toggle menu" type="button">
                 <i class="bi bi-list"></i>
             </button>
+            <div class="topbar-search" id="topbarSearchWrap">
+                <i class="bi bi-search" id="topbarSearchIcon"></i>
+                <input type="text" id="topbarSearchInput" placeholder="Search athletes, coaches..." autocomplete="off" spellcheck="false">
+                <div class="topbar-search-spinner d-none" id="topbarSearchSpinner"></div>
+                <div class="topbar-search-results d-none" id="topbarSearchResults"></div>
+            </div>
             <div class="ms-auto d-flex align-items-center gap-2">
-                <span class="badge role-badge role-badge-{{ session.user.role }} px-3 py-2 rounded-pill">
-                    <i class="bi bi-shield-check me-1"></i>{{ session.user.name }} &middot; {{ session.user.role|title }}
-                </span>
+                <button class="btn btn-sm btn-icon" title="Notifications (coming soon)" type="button" disabled><i class="bi bi-bell"></i></button>
+                <button class="btn btn-sm btn-icon" title="Messages (coming soon)" type="button" disabled><i class="bi bi-envelope"></i></button>
+                <button class="btn btn-sm btn-icon" title="Settings" type="button" id="settingsBtn" aria-label="Open settings"><i class="bi bi-gear"></i></button>
+                <div class="user-chip-wrap">
+                    <button type="button" class="user-chip" id="userChipBtn" aria-expanded="false">
+                        <span class="user-chip-avatar">{{ session.user.name[:1]|upper }}</span>
+                        <span class="user-chip-info">
+                            <span class="user-chip-name">{{ session.user.name }}</span>
+                            <span class="user-chip-role">{{ session.user.role|title }}</span>
+                        </span>
+                        <i class="bi bi-chevron-down user-chip-caret"></i>
+                    </button>
+                    <div class="user-chip-dropdown d-none" id="userChipDropdown">
+                        <div class="ucd-header">
+                            <span class="ucd-avatar">{{ session.user.name[:1]|upper }}</span>
+                            <div>
+                                <p class="ucd-name">{{ session.user.name }}</p>
+                                <p class="ucd-username">@{{ session.user.username }}</p>
+                            </div>
+                        </div>
+                        <div class="ucd-body">
+                            <div class="ucd-row"><span>Role</span><span class="ucd-badge">{{ session.user.role|title }}</span></div>
+                        </div>
+                        <a href="{{ url_for('auth.logout') }}" class="ucd-logout"><i class="bi bi-box-arrow-right me-1"></i> Logout</a>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -78,6 +108,100 @@
         </div>
     </div>
 </div>
+
+<!-- ========== Settings Drawer ========== -->
+<div class="bjk-settings-overlay d-none" id="settingsOverlay"></div>
+<aside class="bjk-settings-drawer" id="settingsDrawer" aria-label="Settings panel">
+    <div class="bsd-header">
+        <span class="bsd-title"><i class="bi bi-sliders me-2"></i>Settings</span>
+        <button class="bsd-close" id="settingsClose" aria-label="Close settings"><i class="bi bi-x-lg"></i></button>
+    </div>
+
+    <div class="bsd-body">
+
+        <!-- Appearance -->
+        <div class="bsd-section">
+            <p class="bsd-section-title">Appearance</p>
+            <p class="bsd-section-sub">Choose your preferred colour mode</p>
+            <div class="bsd-mode-grid">
+                <button class="bsd-mode-btn" id="bsdModeLight" data-mode="light">
+                    <i class="bi bi-sun"></i>
+                    <span>Light</span>
+                </button>
+                <button class="bsd-mode-btn" id="bsdModeDark" data-mode="dark">
+                    <i class="bi bi-moon-stars"></i>
+                    <span>Dark</span>
+                </button>
+                <button class="bsd-mode-btn" id="bsdModeSystem" data-mode="system">
+                    <i class="bi bi-circle-half"></i>
+                    <span>System</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Accent Colour -->
+        <div class="bsd-section">
+            <p class="bsd-section-title">Accent Colour</p>
+            <p class="bsd-section-sub">Used for active nav, highlights and links</p>
+            <div class="bsd-accent-grid">
+                <button class="bsd-accent-swatch" data-accent="#00bcd4" style="background:#00bcd4" title="Teal (default)"></button>
+                <button class="bsd-accent-swatch" data-accent="#7C3AED" style="background:#7C3AED" title="Purple"></button>
+                <button class="bsd-accent-swatch" data-accent="#2563EB" style="background:#2563EB" title="Blue"></button>
+                <button class="bsd-accent-swatch" data-accent="#22C55E" style="background:#22C55E" title="Green"></button>
+                <button class="bsd-accent-swatch" data-accent="#F59E0B" style="background:#F59E0B" title="Amber"></button>
+                <button class="bsd-accent-swatch" data-accent="#EF4444" style="background:#EF4444" title="Red"></button>
+                <button class="bsd-accent-swatch" data-accent="#EC4899" style="background:#EC4899" title="Pink"></button>
+                <button class="bsd-accent-swatch" data-accent="#14B8A6" style="background:#14B8A6" title="Teal-green"></button>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="bsd-section">
+            <p class="bsd-section-title">Sidebar</p>
+            <div class="bsd-toggle-row">
+                <div>
+                    <span class="bsd-row-label">Compact sidebar</span>
+                    <span class="bsd-row-sub">Collapse to icon-only mode</span>
+                </div>
+                <label class="bsd-switch" for="bsdSidebarCompact">
+                    <input type="checkbox" id="bsdSidebarCompact">
+                    <span class="bsd-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Density -->
+        <div class="bsd-section">
+            <p class="bsd-section-title">Layout Density</p>
+            <p class="bsd-section-sub">Adjust spacing across the interface</p>
+            <div class="bsd-density-group">
+                <button class="bsd-density-btn active" id="bsdDensityComfy" data-density="comfortable">
+                    <i class="bi bi-layout-sidebar-inset"></i> Comfortable
+                </button>
+                <button class="bsd-density-btn" id="bsdDensityCompact" data-density="compact">
+                    <i class="bi bi-layout-sidebar-inset-reverse"></i> Compact
+                </button>
+            </div>
+        </div>
+
+        <!-- Session Info -->
+        <div class="bsd-section">
+            <p class="bsd-section-title">Session Info</p>
+            <div class="bsd-info-row"><span>Logged in as</span><span class="bsd-info-val">{{ session.user.name }}</span></div>
+            <div class="bsd-info-row"><span>Role</span><span class="bsd-info-val">{{ session.user.role|title }}</span></div>
+            <div class="bsd-info-row"><span>Username</span><span class="bsd-info-val">@{{ session.user.username }}</span></div>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="bsd-section bsd-danger-zone">
+            <p class="bsd-section-title">Account</p>
+            <a href="{{ url_for('auth.logout') }}" class="bsd-logout-btn">
+                <i class="bi bi-box-arrow-right me-2"></i>Sign out
+            </a>
+        </div>
+
+    </div><!-- /bsd-body -->
+</aside>
 
 <style nonce="{{ csp_nonce() }}">
     .app-shell { display: flex; min-height: 100vh; align-items: stretch; }
@@ -90,7 +214,17 @@
     }
     .sidebar.collapsed { width: 72px; }
 
-    .sidebar-brand { display: flex; align-items: center; gap: .6rem; padding: 1.25rem 1.15rem; white-space: nowrap; }
+    .sidebar-brand { display: flex; align-items: center; gap: .6rem; padding: 1.25rem 1.15rem; white-space: nowrap; transition: padding 0.2s ease; }
+    .sidebar-brand img {
+        height: 40px !important;
+        width: auto !important;
+        object-fit: contain !important;
+        transition: height 0.2s ease;
+    }
+    .brand-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--role-accent, #2563EB); margin-left: auto; flex-shrink: 0; }
+    .sidebar.collapsed .brand-dot { display: none; }
+    .sidebar.collapsed .sidebar-brand { padding: 1.25rem 0.5rem; justify-content: center; }
+    .sidebar.collapsed .sidebar-brand img { height: 35px !important; }
     .sidebar-nav { flex: 1; padding: .25rem .6rem; display: flex; flex-direction: column; gap: .15rem; }
     .sidebar-footer { padding: .6rem; border-top: 1px solid rgba(255,255,255,.08); }
 
@@ -106,28 +240,209 @@
         white-space: nowrap; text-decoration: none;
     }
     .nav-link:hover { background: rgba(255,255,255,.08); color: #fff; }
-    .nav-link.active { background: #0d6efd; color: #fff; }
+    .nav-link.active { background: var(--role-accent, #0d6efd); color: #fff; }
     .nav-link i { font-size: 1.05rem; width: 1.25rem; text-align: center; flex-shrink: 0; }
     .sidebar.collapsed .nav-text { display: none; }
     .sidebar.collapsed .sidebar-brand .brand-text { display: none; }
 
-    .app-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .app-main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: #f1f5f9; }
     .app-topbar {
-        display: flex; align-items: center; padding: .7rem 1.5rem;
+        display: flex; align-items: center; gap: .75rem; padding: .7rem 1.5rem;
         background: #fff; border-bottom: 1px solid #eee; position: sticky; top: 0; z-index: 10;
     }
-    .app-content { flex: 1; }
+    .app-content { flex: 1; background: inherit; }
 
-    .role-badge-superadmin { background: rgba(26,29,41,.1); color: #1a1d29; }
-    .role-badge-admin { background: rgba(220,53,69,.1); color: #dc3545; }
-    .role-badge-coach { background: rgba(13,110,253,.1); color: #0d6efd; }
+    .topbar-search { position: relative; max-width: 380px; width: 100%; }
+    #topbarSearchIcon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9AA5B4; font-size: 13px; pointer-events: none; z-index: 1; }
+    .topbar-search input {
+        width: 100%; padding: 7px 36px 7px 32px; border-radius: 999px; border: 1px solid #E5E7EB;
+        background: #F8FAFC; font-size: 13px; color: #374151; outline: none;
+        transition: border-color .15s, box-shadow .15s;
+    }
+    .topbar-search input:focus { border-color: #00bcd4; box-shadow: 0 0 0 3px rgba(0,188,212,.12); background: #fff; }
+    .topbar-search input::placeholder { color: #9AA5B4; }
+
+    /* Spinner */
+    .topbar-search-spinner {
+        position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+        width: 14px; height: 14px; border: 2px solid #E5E7EB; border-top-color: #00bcd4;
+        border-radius: 50%; animation: bjk-spin .6s linear infinite;
+    }
+    @keyframes bjk-spin { to { transform: translateY(-50%) rotate(360deg); } }
+
+    /* Results dropdown */
+    .topbar-search-results {
+        position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+        background: #fff; border: 1px solid #E5E7EB; border-radius: 14px;
+        box-shadow: 0 12px 32px rgba(17,24,39,.13); z-index: 200; overflow: hidden;
+    }
+    .tsr-item {
+        display: flex; align-items: center; gap: 10px;
+        padding: 10px 14px; cursor: pointer; text-decoration: none;
+        transition: background .1s;
+    }
+    .tsr-item:hover, .tsr-item.highlighted { background: #F8FAFC; }
+    .tsr-icon {
+        width: 32px; height: 32px; border-radius: 8px; display: inline-flex;
+        align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;
+    }
+    .tsr-icon-athlete { background: rgba(37,99,235,.1); color: #2563EB; }
+    .tsr-icon-coach { background: rgba(34,197,94,.1); color: #16a34a; }
+    .tsr-icon-admin { background: rgba(124,58,237,.1); color: #7C3AED; }
+    .tsr-label { font-size: 13.5px; font-weight: 600; color: #111827; }
+    .tsr-sub { font-size: 11.5px; color: #6B7280; }
+    .tsr-empty { padding: 14px; font-size: 13px; color: #9AA5B4; text-align: center; }
+    .tsr-footer { padding: 8px 14px; font-size: 11.5px; color: #9AA5B4; border-top: 1px solid #F3F4F6; text-align: center; }
+
+    /* Dark mode search */
+    [data-bs-theme="dark"] .topbar-search input { background: #0d0f14; border-color: #1e2330; color: #c8d0de; }
+    [data-bs-theme="dark"] .topbar-search input:focus { border-color: #00bcd4; box-shadow: 0 0 0 3px rgba(0,188,212,.15); background: #0d0f14; }
+    [data-bs-theme="dark"] .topbar-search input::placeholder { color: #4a5568; }
+    [data-bs-theme="dark"] .topbar-search-spinner { border-color: #1e2330; border-top-color: #00bcd4; }
+    [data-bs-theme="dark"] .topbar-search-results { background: #13161e; border-color: #1e2330; box-shadow: 0 12px 32px rgba(0,0,0,.5); }
+    [data-bs-theme="dark"] .tsr-item:hover, [data-bs-theme="dark"] .tsr-item.highlighted { background: #1a1e28; }
+    [data-bs-theme="dark"] .tsr-label { color: #e0e7ef; }
+    [data-bs-theme="dark"] .tsr-sub { color: #7a8599; }
+    [data-bs-theme="dark"] .tsr-empty { color: #4a5568; }
+    [data-bs-theme="dark"] .tsr-footer { color: #4a5568; border-top-color: #1e2330; }
+    [data-bs-theme="dark"] .tsr-icon-athlete { background: rgba(0,188,212,.1); color: #00bcd4; }
+    [data-bs-theme="dark"] .tsr-icon-coach { background: rgba(34,197,94,.1); color: #22c55e; }
+    [data-bs-theme="dark"] .tsr-icon-admin { background: rgba(124,58,237,.1); color: #7c3aed; }
+
+    @media (max-width: 768px) { .topbar-search { display: none; } }
+
+    .btn-icon {
+        width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+        border: 1px solid #E5E7EB; background: #fff; color: #6B7280; padding: 0;
+    }
+    .btn-icon:disabled { opacity: .55; cursor: not-allowed; }
+
+    .user-chip-wrap { position: relative; }
+    .user-chip {
+        display: flex; align-items: center; gap: 9px; padding: 4px 10px 4px 4px; border-radius: 999px;
+        background: #F8FAFC; border: 1px solid #E5E7EB; cursor: pointer;
+    }
+    .user-chip:hover { background: #F1F5F9; }
+    .user-chip-caret { font-size: 10px; color: #9AA5B4; }
+    .user-chip-avatar {
+        width: 30px; height: 30px; border-radius: 50%; background: var(--role-accent, #2563EB); color: #fff;
+        display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0;
+    }
+    .user-chip-info { display: flex; flex-direction: column; line-height: 1.15; text-align: left; }
+    .user-chip-name { font-size: 12.5px; font-weight: 600; color: #111827; }
+    .user-chip-role { font-size: 11px; color: #6B7280; }
+
+    .user-chip-dropdown {
+        position: absolute; top: calc(100% + 8px); right: 0; width: 230px; background: #fff;
+        border: 1px solid #E5E7EB; border-radius: 14px; box-shadow: 0 12px 28px rgba(17,24,39,.14);
+        z-index: 30; overflow: hidden;
+    }
+    .ucd-header { display: flex; align-items: center; gap: 10px; padding: 14px; border-bottom: 1px solid #EEF1F5; }
+    .ucd-avatar {
+        width: 38px; height: 38px; border-radius: 50%; background: var(--role-accent, #2563EB); color: #fff;
+        display: inline-flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; flex-shrink: 0;
+    }
+    .ucd-name { font-size: 13.5px; font-weight: 600; color: #111827; margin: 0; }
+    .ucd-username { font-size: 12px; color: #6B7280; margin: 0; }
+    .ucd-body { padding: 10px 14px; }
+    .ucd-row { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; color: #6B7280; }
+    .ucd-badge {
+        background: var(--role-accent, #2563EB); color: #fff; font-size: 11px; font-weight: 600;
+        padding: 2px 10px; border-radius: 999px; opacity: .9;
+    }
+    .ucd-logout {
+        display: flex; align-items: center; padding: 11px 14px; font-size: 13px; font-weight: 500;
+        color: #DC2626; text-decoration: none; border-top: 1px solid #EEF1F5;
+    }
+    .ucd-logout:hover { background: #FEF2F2; }
+
+    @media (max-width: 768px) {
+        .topbar-search { display: none; }
+    }
+
+    .role-badge-superadmin { background: rgba(124,58,237,.1); color: #7C3AED; }
+    .role-badge-admin { background: rgba(34,197,94,.1); color: #22C55E; }
+    .role-badge-coach { background: rgba(37,99,235,.1); color: #2563EB; }
 
     @media (max-width: 768px) {
         .sidebar { position: fixed; left: -250px; height: 100vh; }
         .sidebar.mobile-open { left: 0; }
         .app-shell { display: block; }
     }
+
+    /* ============================================================
+       Dark mode — Teal/Cyan accent palette (matches reference UI)
+       Base dark background: #0d0f14  Card surface: #13161e
+       Border: #1e2330  Accent: #00bcd4 (teal-cyan)
+       ============================================================ */
+
+    /* Sidebar already dark — just deepen it */
+    [data-bs-theme="dark"] .sidebar { background: #0a0c12; }
+    [data-bs-theme="dark"] .sidebar-footer { border-top-color: #1e2330; }
+    [data-bs-theme="dark"] .nav-link:hover { background: rgba(0,188,212,.1); color: #00bcd4; }
+    [data-bs-theme="dark"] .nav-link.active { background: rgba(0,188,212,.18); color: #00bcd4; box-shadow: inset 3px 0 0 #00bcd4; }
+    [data-bs-theme="dark"] .brand-dot { background: #00bcd4; }
+
+    /* Main area — deep dark background */
+    [data-bs-theme="dark"] .app-main { background: #0d0f14; }
+    [data-bs-theme="dark"] .app-topbar { background: #13161e; border-bottom-color: #1e2330; }
+    [data-bs-theme="dark"] .topbar-search input { background: #0d0f14; border-color: #1e2330; color: #c8d0de; }
+    [data-bs-theme="dark"] .topbar-search input::placeholder { color: #4a5568; }
+    [data-bs-theme="dark"] .topbar-search i { color: #4a5568; }
+    [data-bs-theme="dark"] .btn-icon { background: #13161e; border-color: #1e2330; color: #c8d0de; }
+    [data-bs-theme="dark"] .btn-icon:hover { border-color: #00bcd4; color: #00bcd4; }
+
+    /* User chip */
+    [data-bs-theme="dark"] .user-chip { background: #13161e; border-color: #1e2330; }
+    [data-bs-theme="dark"] .user-chip:hover { background: #1a1e28; border-color: #00bcd4; }
+    [data-bs-theme="dark"] .user-chip-name { color: #e0e7ef; }
+    [data-bs-theme="dark"] .user-chip-role { color: #00bcd4; }
+    [data-bs-theme="dark"] .user-chip-caret { color: #4a5568; }
+
+    /* User dropdown */
+    [data-bs-theme="dark"] .user-chip-dropdown { background: #13161e; border-color: #1e2330; box-shadow: 0 16px 40px rgba(0,0,0,.6); }
+    [data-bs-theme="dark"] .ucd-header { border-bottom-color: #1e2330; }
+    [data-bs-theme="dark"] .ucd-name { color: #e0e7ef; }
+    [data-bs-theme="dark"] .ucd-username { color: #00bcd4; }
+    [data-bs-theme="dark"] .ucd-row { color: #7a8599; }
+    [data-bs-theme="dark"] .ucd-badge { background: #00bcd4; }
+    [data-bs-theme="dark"] .ucd-logout { border-top-color: #1e2330; color: #ef4444; }
+    [data-bs-theme="dark"] .ucd-logout:hover { background: rgba(239,68,68,.1); }
 </style>
+
+<script nonce="{{ csp_nonce() }}">
+(function () {
+    // Applied globally so dark mode (toggled from the dashboard hero) persists
+    // across every page, not just /dashboard.
+    // Default to dark mode if no preference is stored.
+    var stored = localStorage.getItem('bjk_theme') || 'dark';
+    document.documentElement.setAttribute('data-bs-theme', stored);
+
+    // Shared helpers so any page's Chart.js instances can re-color themselves
+    // when the theme toggle fires (see dashboard.html).
+    window.bjkChartColors = function () {
+        var dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+        return { text: dark ? '#7a8599' : '#5B6472', grid: dark ? '#1e2330' : '#E3E8EF' };
+    };
+    window.__bjkCharts = window.__bjkCharts || [];
+    window.bjkRegisterChart = function (chart) { window.__bjkCharts.push(chart); };
+    window.bjkRefreshCharts = function () {
+        var c = window.bjkChartColors();
+        window.__bjkCharts.forEach(function (chart) {
+            if (!chart || !chart.options) return;
+            if (chart.options.plugins && chart.options.plugins.legend && chart.options.plugins.legend.labels) {
+                chart.options.plugins.legend.labels.color = c.text;
+            }
+            var scales = chart.options.scales || {};
+            Object.keys(scales).forEach(function (key) {
+                if (scales[key].ticks) scales[key].ticks.color = c.text;
+                if (scales[key].grid) scales[key].grid.color = c.grid;
+            });
+            chart.update();
+        });
+    };
+})();
+</script>
 
 <script nonce="{{ csp_nonce() }}">
 (function () {
@@ -147,6 +462,444 @@
             localStorage.setItem('bjk_sidebar_collapsed', sidebar.classList.contains('collapsed') ? '1' : '0');
         }
     });
+
+    var chipBtn = document.getElementById('userChipBtn');
+    var chipDropdown = document.getElementById('userChipDropdown');
+    if (chipBtn && chipDropdown) {
+        chipBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var open = !chipDropdown.classList.contains('d-none');
+            chipDropdown.classList.toggle('d-none', open);
+            chipBtn.setAttribute('aria-expanded', open ? 'false' : 'true');
+        });
+        document.addEventListener('click', function (e) {
+            if (!chipDropdown.contains(e.target) && e.target !== chipBtn) {
+                chipDropdown.classList.add('d-none');
+                chipBtn.setAttribute('aria-expanded', 'false');
+            }
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                chipDropdown.classList.add('d-none');
+                chipBtn.setAttribute('aria-expanded', 'false');
+            }
+        });
+    }
+})();
+</script>
+<style nonce="{{ csp_nonce() }}">
+/* ================================================================
+   Settings Drawer
+   ================================================================ */
+.bjk-settings-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.45);
+    z-index: 1040; transition: opacity .25s ease;
+    backdrop-filter: blur(2px);
+}
+.bjk-settings-overlay.d-none { display: none !important; }
+
+.bjk-settings-drawer {
+    position: fixed; top: 0; right: 0; bottom: 0;
+    width: 340px; max-width: 92vw;
+    background: #fff; z-index: 1041;
+    display: flex; flex-direction: column;
+    box-shadow: -8px 0 32px rgba(0,0,0,.16);
+    transform: translateX(100%);
+    transition: transform .28s cubic-bezier(.4,0,.2,1);
+    overflow: hidden;
+}
+.bjk-settings-drawer.open { transform: translateX(0); }
+
+/* Dark mode drawer */
+[data-bs-theme="dark"] .bjk-settings-drawer { background: #13161e; }
+[data-bs-theme="dark"] .bsd-header { border-bottom-color: #1e2330; }
+[data-bs-theme="dark"] .bsd-title { color: #e0e7ef; }
+[data-bs-theme="dark"] .bsd-close { color: #7a8599; }
+[data-bs-theme="dark"] .bsd-close:hover { background: rgba(0,188,212,.1); color: #00bcd4; }
+[data-bs-theme="dark"] .bsd-section { border-bottom-color: #1e2330; }
+[data-bs-theme="dark"] .bsd-section-title { color: #e0e7ef; }
+[data-bs-theme="dark"] .bsd-section-sub { color: #4a5568; }
+[data-bs-theme="dark"] .bsd-mode-btn { background: #1a1e28; border-color: #1e2330; color: #7a8599; }
+[data-bs-theme="dark"] .bsd-mode-btn:hover { border-color: #00bcd4; color: #00bcd4; }
+[data-bs-theme="dark"] .bsd-mode-btn.active { border-color: #00bcd4; background: rgba(0,188,212,.12); color: #00bcd4; }
+[data-bs-theme="dark"] .bsd-accent-swatch.active { box-shadow: 0 0 0 2px #0d0f14, 0 0 0 4px currentColor; }
+[data-bs-theme="dark"] .bsd-toggle-row { background: #1a1e28; }
+[data-bs-theme="dark"] .bsd-row-label { color: #c8d0de; }
+[data-bs-theme="dark"] .bsd-row-sub { color: #4a5568; }
+[data-bs-theme="dark"] .bsd-density-btn { background: #1a1e28; border-color: #1e2330; color: #7a8599; }
+[data-bs-theme="dark"] .bsd-density-btn:hover { border-color: #00bcd4; color: #00bcd4; }
+[data-bs-theme="dark"] .bsd-density-btn.active { background: rgba(0,188,212,.12); border-color: #00bcd4; color: #00bcd4; }
+[data-bs-theme="dark"] .bsd-info-row { border-bottom-color: #1e2330; color: #7a8599; }
+[data-bs-theme="dark"] .bsd-info-val { color: #c8d0de; }
+[data-bs-theme="dark"] .bsd-danger-zone { background: transparent; }
+[data-bs-theme="dark"] .bsd-logout-btn { background: rgba(239,68,68,.08); border-color: rgba(239,68,68,.25); color: #ef4444; }
+[data-bs-theme="dark"] .bsd-logout-btn:hover { background: rgba(239,68,68,.16); }
+
+/* Drawer header */
+.bsd-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 20px 16px;
+    border-bottom: 1px solid #E5E7EB;
+    flex-shrink: 0;
+}
+.bsd-title { font-size: 15px; font-weight: 700; color: #111827; display: flex; align-items: center; }
+.bsd-close {
+    width: 32px; height: 32px; border-radius: 8px; display: inline-flex;
+    align-items: center; justify-content: center; border: none; background: transparent;
+    color: #6B7280; cursor: pointer; font-size: 14px; transition: background .15s, color .15s;
+}
+.bsd-close:hover { background: #F3F4F6; color: #111827; }
+
+/* Body scroll */
+.bsd-body { flex: 1; overflow-y: auto; padding-bottom: 24px; }
+
+/* Sections */
+.bsd-section { padding: 20px; border-bottom: 1px solid #F3F4F6; }
+.bsd-section:last-child { border-bottom: none; }
+.bsd-section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #111827; margin: 0 0 4px; }
+.bsd-section-sub { font-size: 12px; color: #6B7280; margin: 0 0 14px; }
+
+/* Mode grid */
+.bsd-mode-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.bsd-mode-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 12px 8px; border-radius: 10px; border: 1.5px solid #E5E7EB;
+    background: #F9FAFB; cursor: pointer; font-size: 12px; font-weight: 500;
+    color: #6B7280; transition: all .15s ease;
+}
+.bsd-mode-btn i { font-size: 18px; }
+.bsd-mode-btn:hover { border-color: #00bcd4; color: #00bcd4; }
+.bsd-mode-btn.active { border-color: #00bcd4; background: rgba(0,188,212,.08); color: #00bcd4; }
+
+/* Accent swatches */
+.bsd-accent-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+.bsd-accent-swatch {
+    width: 32px; height: 32px; border-radius: 50%; border: 2.5px solid transparent;
+    cursor: pointer; transition: transform .15s, box-shadow .15s;
+    box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.bsd-accent-swatch:hover { transform: scale(1.15); }
+.bsd-accent-swatch.active { box-shadow: 0 0 0 2px #fff, 0 0 0 4px currentColor; }
+
+/* Toggle row */
+.bsd-toggle-row {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 12px; padding: 12px 14px; border-radius: 10px; background: #F9FAFB;
+}
+.bsd-row-label { font-size: 13.5px; font-weight: 600; color: #111827; display: block; }
+.bsd-row-sub { font-size: 12px; color: #6B7280; display: block; margin-top: 2px; }
+.bsd-switch { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
+.bsd-switch input { opacity: 0; width: 0; height: 0; }
+.bsd-slider {
+    position: absolute; cursor: pointer; inset: 0;
+    background: #D1D5DB; border-radius: 999px; transition: .25s;
+}
+.bsd-slider:before {
+    position: absolute; content: ''; height: 16px; width: 16px;
+    left: 3px; bottom: 3px; background: #fff; border-radius: 50%;
+    transition: .25s; box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.bsd-switch input:checked + .bsd-slider { background: #00bcd4; }
+.bsd-switch input:checked + .bsd-slider:before { transform: translateX(18px); }
+
+/* Density */
+.bsd-density-group { display: flex; gap: 8px; }
+.bsd-density-btn {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 10px 8px; border-radius: 8px; border: 1.5px solid #E5E7EB;
+    background: #F9FAFB; cursor: pointer; font-size: 12.5px; font-weight: 500;
+    color: #6B7280; transition: all .15s;
+}
+.bsd-density-btn.active { background: rgba(0,188,212,.08); border-color: #00bcd4; color: #00bcd4; }
+.bsd-density-btn:hover { border-color: #00bcd4; color: #00bcd4; }
+
+/* Session info */
+.bsd-info-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 9px 0; border-bottom: 1px solid #F3F4F6;
+    font-size: 13px; color: #6B7280;
+}
+.bsd-info-row:last-child { border-bottom: none; }
+.bsd-info-val { font-weight: 600; color: #111827; }
+
+/* Logout */
+.bsd-logout-btn {
+    display: flex; align-items: center; width: 100%;
+    padding: 11px 16px; border-radius: 10px; font-size: 13.5px;
+    font-weight: 600; color: #DC2626; text-decoration: none;
+    background: rgba(220,38,38,.06); border: 1.5px solid rgba(220,38,38,.18);
+    transition: background .15s;
+}
+.bsd-logout-btn:hover { background: rgba(220,38,38,.12); color: #DC2626; }
+
+/* Compact density override */
+[data-density="compact"] .container-fluid { padding-top: 12px !important; padding-bottom: 12px !important; }
+[data-density="compact"] .card-body { padding: 12px !important; }
+[data-density="compact"] .pd-card { padding: 12px 16px; }
+</style>
+
+<script nonce="{{ csp_nonce() }}">
+(function () {
+    /* ---- helpers ---- */
+    var root = document.documentElement;
+    var sidebar = document.getElementById('sidebar');
+
+    function applyTheme(mode) {
+        var theme = mode;
+        if (mode === 'system') {
+            theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        root.setAttribute('data-bs-theme', theme);
+        if (window.bjkRefreshCharts) window.bjkRefreshCharts();
+    }
+
+    function applyAccent(color) {
+        root.style.setProperty('--bjk-accent-live', color);
+        // Update dynamic rules via a runtime <style> tag
+        var el = document.getElementById('bjk-accent-override');
+        if (!el) { el = document.createElement('style'); el.id = 'bjk-accent-override'; document.head.appendChild(el); }
+        el.textContent =
+            '[data-bs-theme="dark"] .nav-link.active { background: ' + color + '22 !important; color: ' + color + ' !important; box-shadow: inset 3px 0 0 ' + color + ' !important; }' +
+            '[data-bs-theme="dark"] .nav-link:hover { color: ' + color + ' !important; }' +
+            '[data-bs-theme="dark"] .brand-dot { background: ' + color + ' !important; }' +
+            '[data-bs-theme="dark"] .btn-icon:hover { border-color: ' + color + ' !important; color: ' + color + ' !important; }' +
+            '[data-bs-theme="dark"] .user-chip-role { color: ' + color + ' !important; }' +
+            '.bsd-mode-btn.active, .bsd-density-btn.active { border-color: ' + color + ' !important; color: ' + color + ' !important; background: ' + color + '18 !important; }' +
+            '.bsd-switch input:checked + .bsd-slider { background: ' + color + ' !important; }';
+    }
+
+    function applyDensity(density) {
+        root.setAttribute('data-density', density);
+    }
+
+    /* ---- load stored prefs ---- */
+    var storedMode = localStorage.getItem('bjk_mode') || 'dark';
+    var storedAccent = localStorage.getItem('bjk_accent') || '#00bcd4';
+    var storedDensity = localStorage.getItem('bjk_density') || 'comfortable';
+
+    applyTheme(storedMode);
+    applyAccent(storedAccent);
+    applyDensity(storedDensity);
+
+    /* ---- drawer open/close ---- */
+    var drawer = document.getElementById('settingsDrawer');
+    var overlay = document.getElementById('settingsOverlay');
+    var settingsBtn = document.getElementById('settingsBtn');
+    var closeBtn = document.getElementById('settingsClose');
+
+    function openDrawer() {
+        overlay.classList.remove('d-none');
+        requestAnimationFrame(function () { drawer.classList.add('open'); });
+        syncUI();
+    }
+    function closeDrawer() {
+        drawer.classList.remove('open');
+        setTimeout(function () { overlay.classList.add('d-none'); }, 280);
+    }
+
+    if (settingsBtn) settingsBtn.addEventListener('click', function (e) { e.stopPropagation(); openDrawer(); });
+    if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+    if (overlay) overlay.addEventListener('click', closeDrawer);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeDrawer(); });
+
+    /* ---- mode buttons ---- */
+    function syncUI() {
+        var mode = localStorage.getItem('bjk_mode') || 'dark';
+        document.querySelectorAll('.bsd-mode-btn').forEach(function (btn) {
+            btn.classList.toggle('active', btn.dataset.mode === mode);
+        });
+        var accent = localStorage.getItem('bjk_accent') || '#00bcd4';
+        document.querySelectorAll('.bsd-accent-swatch').forEach(function (sw) {
+            sw.classList.toggle('active', sw.dataset.accent.toLowerCase() === accent.toLowerCase());
+        });
+        var density = localStorage.getItem('bjk_density') || 'comfortable';
+        document.querySelectorAll('.bsd-density-btn').forEach(function (btn) {
+            btn.classList.toggle('active', btn.dataset.density === density);
+        });
+        var compact = localStorage.getItem('bjk_sidebar_collapsed') === '1';
+        var cb = document.getElementById('bsdSidebarCompact');
+        if (cb) cb.checked = compact;
+    }
+
+    document.querySelectorAll('.bsd-mode-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var mode = btn.dataset.mode;
+            localStorage.setItem('bjk_mode', mode);
+            localStorage.setItem('bjk_theme', mode === 'system'
+                ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+                : mode);
+            applyTheme(mode);
+            syncUI();
+        });
+    });
+
+    /* ---- accent swatches ---- */
+    document.querySelectorAll('.bsd-accent-swatch').forEach(function (sw) {
+        sw.addEventListener('click', function () {
+            var color = sw.dataset.accent;
+            localStorage.setItem('bjk_accent', color);
+            applyAccent(color);
+            syncUI();
+        });
+    });
+
+    /* ---- sidebar compact toggle ---- */
+    var compactCb = document.getElementById('bsdSidebarCompact');
+    if (compactCb) {
+        compactCb.addEventListener('change', function () {
+            var collapsed = compactCb.checked;
+            localStorage.setItem('bjk_sidebar_collapsed', collapsed ? '1' : '0');
+            if (sidebar) {
+                sidebar.classList.toggle('collapsed', collapsed);
+            }
+        });
+    }
+
+    /* ---- density buttons ---- */
+    document.querySelectorAll('.bsd-density-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var d = btn.dataset.density;
+            localStorage.setItem('bjk_density', d);
+            applyDensity(d);
+            syncUI();
+        });
+    });
+
+    /* ---- listen for system theme changes ---- */
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
+        if ((localStorage.getItem('bjk_mode') || 'dark') === 'system') {
+            applyTheme('system');
+        }
+    });
+
+    /* ---- global topbar live search ---- */
+    (function () {
+        var searchInput = document.getElementById('topbarSearchInput');
+        var searchResults = document.getElementById('topbarSearchResults');
+        var searchSpinner = document.getElementById('topbarSearchSpinner');
+        var searchWrap = document.getElementById('topbarSearchWrap');
+        if (!searchInput || !searchResults) return;
+
+        var debounceTimer;
+        var highlightedIndex = -1;
+
+        function showSpinner() {
+            if (searchSpinner) searchSpinner.classList.remove('d-none');
+        }
+        function hideSpinner() {
+            if (searchSpinner) searchSpinner.classList.add('d-none');
+        }
+
+        function clearResults() {
+            searchResults.innerHTML = '';
+            searchResults.classList.add('d-none');
+            highlightedIndex = -1;
+        }
+
+        function renderResults(results) {
+            highlightedIndex = -1;
+            if (results.length === 0) {
+                searchResults.innerHTML = '<div class="tsr-empty">No results found</div>';
+                searchResults.classList.remove('d-none');
+                return;
+            }
+
+            var html = results.map(function (item, idx) {
+                var iconClass = 'tsr-icon-' + item.type;
+                return '<a href="' + item.url + '" class="tsr-item" data-index="' + idx + '">' +
+                    '<div class="tsr-icon ' + iconClass + '"><i class="bi ' + item.icon + '"></i></div>' +
+                    '<div class="tsr-info">' +
+                        '<div class="tsr-label">' + escapeHtml(item.label) + '</div>' +
+                        '<div class="tsr-sub">' + escapeHtml(item.sub) + '</div>' +
+                    '</div>' +
+                '</a>';
+            }).join('');
+
+            html += '<div class="tsr-footer">Press Enter to select</div>';
+            searchResults.innerHTML = html;
+            searchResults.classList.remove('d-none');
+        }
+
+        function escapeHtml(str) {
+            return (str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function performSearch(query) {
+            showSpinner();
+            fetch('/api/search?q=' + encodeURIComponent(query))
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    hideSpinner();
+                    renderResults(data.results || []);
+                })
+                .catch(function (err) {
+                    hideSpinner();
+                    console.error('Search error:', err);
+                });
+        }
+
+        searchInput.addEventListener('input', function () {
+            var val = searchInput.value.trim();
+            clearTimeout(debounceTimer);
+            if (!val) {
+                clearResults();
+                hideSpinner();
+                return;
+            }
+            debounceTimer = setTimeout(function () {
+                performSearch(val);
+            }, 250);
+        });
+
+        searchInput.addEventListener('focus', function () {
+            var val = searchInput.value.trim();
+            if (val && searchResults.classList.contains('d-none')) {
+                performSearch(val);
+            }
+        });
+
+        document.addEventListener('click', function (e) {
+            if (searchWrap && !searchWrap.contains(e.target)) {
+                searchResults.classList.add('d-none');
+            }
+        });
+
+        // Keyboard navigation
+        searchInput.addEventListener('keydown', function (e) {
+            var items = searchResults.querySelectorAll('.tsr-item');
+            if (!items.length) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                highlightedIndex++;
+                if (highlightedIndex >= items.length) highlightedIndex = 0;
+                updateHighlight(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                highlightedIndex--;
+                if (highlightedIndex < 0) highlightedIndex = items.length - 1;
+                updateHighlight(items);
+            } else if (e.key === 'Enter') {
+                if (highlightedIndex >= 0 && highlightedIndex < items.length) {
+                    e.preventDefault();
+                    window.location.href = items[highlightedIndex].getAttribute('href');
+                }
+            } else if (e.key === 'Escape') {
+                clearResults();
+                searchInput.blur();
+            }
+        });
+
+        function updateHighlight(items) {
+            items.forEach(function (el, idx) {
+                el.classList.toggle('highlighted', idx === highlightedIndex);
+            });
+        }
+    })();
 })();
 </script>
 {% endblock %}

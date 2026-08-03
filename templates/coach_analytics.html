@@ -5,7 +5,7 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
             <h4 class="fw-bold mb-1">Performance Analytics</h4>
-            <p class="text-muted small mb-0">Select an athlete below, or view the squad comparison at the bottom</p>
+            <p class="text-muted small mb-0">Search and select an athlete to view their performance dashboard</p>
         </div>
         <a href="{{ url_for('coach.coach_athletes') }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
             <i class="bi bi-arrow-left me-1"></i> Back
@@ -18,7 +18,14 @@
     <div class="alert alert-info small">No athletes yet — add athletes first to see their performance dashboard here.</div>
     {% else %}
 
-    <div id="roster"></div>
+    <div class="pd-card athlete-select-card">
+        <label class="section-label" for="athleteSearchInput">Select athlete</label>
+        <div class="athlete-select" id="athleteSelectWrap">
+            <input type="text" id="athleteSearchInput" class="athlete-search-input" placeholder="Search athlete by name..." autocomplete="off">
+            <i class="bi bi-chevron-down athlete-select-caret"></i>
+            <div id="athleteDropdownList" class="athlete-dropdown-list d-none"></div>
+        </div>
+    </div>
 
     <div class="pd-card">
         <div class="profile-row">
@@ -89,23 +96,6 @@
         </div>
     </div>
 
-    <div class="pd-card">
-        <p class="section-label">Squad comparison</p>
-        <table class="pd-table">
-            <thead>
-                <tr>
-                    <th class="col-athlete">Athlete</th>
-                    <th class="col-sport">Sport</th>
-                    <th class="col-num">Index</th>
-                    <th class="col-num">&Delta;</th>
-                    <th class="col-num">Attendance</th>
-                </tr>
-            </thead>
-            <tbody id="squadRows"></tbody>
-            <tfoot id="squadFoot"></tfoot>
-        </table>
-    </div>
-
     {% endif %}
 </div>
 
@@ -122,10 +112,16 @@
     .section-label{font-size:13px;color:var(--text-secondary);margin:0 0 12px;font-weight:500;}
     .caption{font-size:11.5px;color:var(--text-muted);margin:8px 0 0;}
 
-    #roster{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:20px;}
-    #roster button{flex:0 0 auto;padding:8px 16px;border-radius:999px;font-size:13px;font-family:inherit;cursor:pointer;background:#fff;color:#1A2333;border:1px solid var(--border);transition:all .15s ease;}
-    #roster button:hover{border-color:var(--accent);}
-    #roster button.active{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:500;}
+    .athlete-select-card{padding:16px 24px;}
+    .athlete-select{position:relative;max-width:360px;}
+    .athlete-search-input{width:100%;padding:9px 34px 9px 14px;border-radius:8px;border:1px solid var(--border);font-size:14px;font-family:inherit;color:#1A2333;background:#fff;}
+    .athlete-search-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light);}
+    .athlete-select-caret{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--text-muted);pointer-events:none;}
+    .athlete-dropdown-list{position:absolute;top:calc(100% + 4px);left:0;right:0;max-height:260px;overflow-y:auto;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 12px rgba(16,24,40,.1);z-index:20;}
+    .athlete-dropdown-list .opt{padding:9px 14px;font-size:13.5px;cursor:pointer;color:#1A2333;}
+    .athlete-dropdown-list .opt:hover{background:#F7F9FC;}
+    .athlete-dropdown-list .opt.active{background:var(--accent-light);font-weight:500;}
+    .athlete-dropdown-list .opt-empty{padding:9px 14px;font-size:13px;color:var(--text-muted);}
 
     .profile-row{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
     .profile-left{display:flex;align-items:center;gap:14px;}
@@ -195,6 +191,95 @@
     .kpi-unit{font-size:13px;color:var(--text-muted);font-weight:400;}
     .kpi-delta-up{color:var(--success);}
     .kpi-delta-down{color:var(--danger);}
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    .spin {
+        display: inline-block;
+        animation: spin 1s linear infinite;
+    }
+
+    /* ============================================================
+       Dark mode — full coverage for coach analytics
+       Palette: bg #0d0f14 | card #13161e | border #1e2330 | accent #00bcd4
+       ============================================================ */
+    [data-bs-theme="dark"] .pd-wrap {
+        --accent: #00bcd4; --accent-light: rgba(0,188,212,.12);
+        --border: #1e2330; --text-secondary: #7a8599; --text-muted: #4a5568;
+        --success: #22c55e; --success-bg: rgba(34,197,94,.12);
+        --warning: #f59e0b; --warning-bg: rgba(245,158,11,.12);
+        --danger: #ef4444;
+    }
+    [data-bs-theme="dark"] .container-fluid { background: #0d0f14; }
+    [data-bs-theme="dark"] .pd-card {
+        background: #13161e;
+        border-color: #1e2330;
+        box-shadow: 0 2px 8px rgba(0,0,0,.4);
+    }
+    [data-bs-theme="dark"] h4.fw-bold { color: #e0e7ef; }
+    [data-bs-theme="dark"] .section-label { color: #7a8599; }
+    [data-bs-theme="dark"] .caption { color: #4a5568; }
+    [data-bs-theme="dark"] .text-muted { color: #4a5568 !important; }
+
+    /* Header & back button */
+    [data-bs-theme="dark"] .btn-outline-secondary {
+        border-color: #1e2330; color: #c8d0de;
+    }
+    [data-bs-theme="dark"] .btn-outline-secondary:hover {
+        background: rgba(0,188,212,.1); border-color: #00bcd4; color: #00bcd4;
+    }
+
+    /* Athlete search input */
+    [data-bs-theme="dark"] .athlete-search-input {
+        background: #0d0f14; border-color: #1e2330; color: #c8d0de;
+    }
+    [data-bs-theme="dark"] .athlete-search-input:focus {
+        border-color: #00bcd4; box-shadow: 0 0 0 3px rgba(0,188,212,.18);
+    }
+    [data-bs-theme="dark"] .athlete-select-caret { color: #4a5568; }
+
+    /* Dropdown list */
+    [data-bs-theme="dark"] .athlete-dropdown-list {
+        background: #13161e; border-color: #1e2330; box-shadow: 0 8px 24px rgba(0,0,0,.5);
+    }
+    [data-bs-theme="dark"] .athlete-dropdown-list .opt { color: #c8d0de; }
+    [data-bs-theme="dark"] .athlete-dropdown-list .opt:hover { background: #1a1e28; }
+    [data-bs-theme="dark"] .athlete-dropdown-list .opt.active { background: rgba(0,188,212,.15); color: #00bcd4; }
+    [data-bs-theme="dark"] .athlete-dropdown-list .opt-empty { color: #4a5568; }
+
+    /* Profile card */
+    [data-bs-theme="dark"] .avatar { background: rgba(0,188,212,.15); color: #00bcd4; }
+    [data-bs-theme="dark"] #a-name { color: #e0e7ef; }
+    [data-bs-theme="dark"] #a-meta { color: #7a8599; }
+    [data-bs-theme="dark"] .pd-badge.neutral { background: rgba(122,133,153,.15); color: #7a8599; }
+    [data-bs-theme="dark"] .index-label { color: #7a8599; }
+    [data-bs-theme="dark"] .index-value { color: #e0e7ef; }
+    [data-bs-theme="dark"] .attendance-label { color: #c8d0de; }
+
+    /* KPI cards */
+    [data-bs-theme="dark"] .kpi-card { background: #1a1e28; border-color: #1e2330; }
+    [data-bs-theme="dark"] .kpi-card i { color: #00bcd4; }
+    [data-bs-theme="dark"] .kpi-label { color: #7a8599; }
+    [data-bs-theme="dark"] .kpi-value { color: #e0e7ef; }
+    [data-bs-theme="dark"] .kpi-unit { color: #4a5568; }
+
+    /* Legend & recommendations */
+    [data-bs-theme="dark"] .legend { color: #7a8599; }
+    [data-bs-theme="dark"] #recs li { color: #c8d0de; }
+    [data-bs-theme="dark"] #recs i { color: #00bcd4; }
+
+    /* Table */
+    [data-bs-theme="dark"] .pd-table th { color: #7a8599; border-bottom-color: #1e2330; }
+    [data-bs-theme="dark"] .pd-table td { color: #c8d0de; border-bottom-color: #1e2330; }
+    [data-bs-theme="dark"] .pd-table tbody tr:hover { background: #1a1e28; }
+    [data-bs-theme="dark"] .pd-table tbody tr.active { background: rgba(0,188,212,.12); }
+    [data-bs-theme="dark"] .pd-table tfoot td { background: #0d0f14; border-top-color: #1e2330; }
+    [data-bs-theme="dark"] .pd-muted { color: #7a8599; }
+
+    /* Alerts */
+    [data-bs-theme="dark"] .alert-secondary { background: #1a1e28; border-color: #1e2330; color: #7a8599; }
+    [data-bs-theme="dark"] .alert-info { background: rgba(0,188,212,.1); border-color: rgba(0,188,212,.25); color: #00bcd4; }
 </style>
 
 <script src="{{ url_for('static', filename='js/chart.umd.min.js') }}"></script>
@@ -218,14 +303,34 @@
         return pct >= 90 ? 'att-good' : pct >= 75 ? 'att-fair' : 'att-poor';
     }
 
-    function renderRoster() {
-        var el = document.getElementById('roster');
-        el.innerHTML = athletes.map(function (a) {
-            return '<button data-id="' + a.id + '" class="' + (a.id === selectedId ? 'active' : '') + '">' + a.name + '</button>';
+    var searchInput = document.getElementById('athleteSearchInput');
+
+    function renderDropdownList(filter) {
+        var list = document.getElementById('athleteDropdownList');
+        var f = (filter || '').trim().toLowerCase();
+        var matches = athletes.filter(function (a) { return a.name.toLowerCase().indexOf(f) !== -1; });
+        if (!matches.length) {
+            list.innerHTML = '<div class="opt-empty">No athletes match &quot;' + filter + '&quot;</div>';
+            return;
+        }
+        list.innerHTML = matches.map(function (a) {
+            return '<div class="opt' + (a.id === selectedId ? ' active' : '') + '" data-id="' + a.id + '">' + a.name + '</div>';
         }).join('');
-        el.querySelectorAll('button').forEach(function (b) {
-            b.addEventListener('click', function () { selectAthlete(parseInt(b.dataset.id)); });
+        list.querySelectorAll('.opt').forEach(function (opt) {
+            opt.addEventListener('click', function () {
+                selectAthlete(parseInt(opt.dataset.id));
+                closeDropdown();
+            });
         });
+    }
+
+    function openDropdown(filter) {
+        document.getElementById('athleteDropdownList').classList.remove('d-none');
+        renderDropdownList(filter !== undefined ? filter : searchInput.value);
+    }
+
+    function closeDropdown() {
+        document.getElementById('athleteDropdownList').classList.add('d-none');
     }
 
     function renderKpis(a) {
@@ -254,33 +359,48 @@
         document.getElementById('a-attendance').textContent = (a.attendance_pct !== null && a.attendance_pct !== undefined) ? a.attendance_pct + '% avg attendance' : '';
     }
 
-    function renderRecs(a) {
+    var recsCache = {};
+
+    function renderRecsList(recs) {
         var el = document.getElementById('recs');
-        if (!a.recs || !a.recs.length) {
+        if (!recs || !recs.length) {
             el.innerHTML = '<li><i class="bi bi-lightbulb"></i><span class="text-muted">No recommendations yet &mdash; submit an assessment to generate insights.</span></li>';
             return;
         }
-        el.innerHTML = a.recs.map(function (r) {
+        el.innerHTML = recs.map(function (r) {
             return '<li><i class="bi bi-lightbulb"></i><span>' + r + '</span></li>';
         }).join('');
     }
 
-    function renderSquad() {
-        document.getElementById('squadRows').innerHTML = athletes.map(function (a) {
-            var dClass = a.delta >= 0 ? 'pd-positive' : 'pd-negative';
-            var att = (a.attendance_pct !== null && a.attendance_pct !== undefined) ? a.attendance_pct + '%' : '-';
-            var idx = a.has_data ? a.index : '-';
-            var delta = a.has_data ? ((a.delta >= 0 ? '+' : '') + a.delta) : '-';
-            return '<tr data-id="' + a.id + '" class="' + (a.id === selectedId ? 'active' : '') + '">' +
-                '<td>' + a.name + '</td><td class="pd-muted">' + a.sport + '</td>' +
-                '<td class="num">' + idx + '</td>' +
-                '<td class="num ' + (a.has_data ? dClass : 'pd-muted') + '">' + delta + '</td>' +
-                '<td class="num pd-muted">' + att + '</td></tr>';
-        }).join('');
-        document.getElementById('squadFoot').innerHTML = '<tr><td>Squad average</td><td></td><td class="num">' + squadAvgIndex + '</td><td></td><td></td></tr>';
-        document.querySelectorAll('#squadRows tr').forEach(function (r) {
-            r.addEventListener('click', function () { selectAthlete(parseInt(r.dataset.id)); });
-        });
+    function loadRecs(id) {
+        var el = document.getElementById('recs');
+        if (recsCache[id]) {
+            renderRecsList(recsCache[id]);
+            return;
+        }
+        // Show loading state
+        el.innerHTML = '<li><i class="bi bi-arrow-repeat spin"></i><span class="text-muted">Generating coaching recommendations via Gemini AI...</span></li>';
+
+        fetch('/coach/athletes/' + id + '/recommendations')
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+                if (data.recs) {
+                    recsCache[id] = data.recs;
+                    if (selectedId === id) {
+                        renderRecsList(data.recs);
+                    }
+                } else {
+                    if (selectedId === id) {
+                        renderRecsList([]);
+                    }
+                }
+            })
+            .catch(function (err) {
+                console.error(err);
+                if (selectedId === id) {
+                    renderRecsList([]);
+                }
+            });
     }
 
     function selectAthlete(id) {
@@ -314,7 +434,7 @@
 
             renderKpis(a);
             renderAttendance(a);
-            renderRecs(a);
+            loadRecs(id);
 
             var cats = ['physical', 'technical', 'tactical', 'behavioral'];
             if (a.has_prev) {
@@ -343,12 +463,24 @@
             if (trendNote) trendNote.classList.toggle('d-none', a.trend.length !== 1);
         }
 
-        renderRoster();
-        renderSquad();
+        searchInput.value = a.name;
+        closeDropdown();
     }
 
-    renderRoster();
-    renderSquad();
+    searchInput.value = athletes[0].name;
+    searchInput.addEventListener('focus', function () {
+        searchInput.select();
+        openDropdown('');
+    });
+    searchInput.addEventListener('input', function () {
+        openDropdown();
+    });
+    searchInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { closeDropdown(); searchInput.blur(); }
+    });
+    document.addEventListener('click', function (e) {
+        if (!document.getElementById('athleteSelectWrap').contains(e.target)) closeDropdown();
+    });
 
     rangeChart = new Chart(document.getElementById('rangeChart'), {
         type: 'bar',

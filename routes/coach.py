@@ -1,6 +1,6 @@
 from datetime import date
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 
 from common.decorators import login_required, role_required
 from common.models import (
@@ -9,7 +9,7 @@ from common.models import (
     ASSESSMENT_FIELDS, compute_age_and_focus, compute_attendance_pct,
     get_assessment_by_id, list_assessments, create_assessment, update_assessment,
     archive_assessment, get_coach_analytics, get_athlete_analytics,
-    get_squad_performance_dashboard,
+    get_squad_performance_dashboard, get_athlete_recommendations,
 )
 
 bp = Blueprint("coach", __name__)
@@ -322,3 +322,15 @@ def coach_athlete_analytics(athlete_id):
 
     analytics = get_athlete_analytics(athlete_id, _coach_id())
     return render_template("coach_athlete_analytics.html", athlete=athlete, analytics=analytics)
+
+
+@bp.route("/coach/athletes/<int:athlete_id>/recommendations")
+@login_required
+@role_required("coach")
+def coach_athlete_recommendations(athlete_id):
+    athlete = _owned_athlete_or_404(athlete_id)
+    if not athlete:
+        return jsonify(error="Athlete not found"), 404
+
+    recs = get_athlete_recommendations(athlete_id, _coach_id())
+    return jsonify(recs=recs)
