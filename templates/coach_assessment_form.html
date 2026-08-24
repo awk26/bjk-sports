@@ -66,8 +66,27 @@
 
     {{ flashed() }}
 
-    <!-- Progress bar -->
+    <!-- Import from File -->
     <div class="card border-0 shadow-sm rounded-4 mb-3">
+        <div class="card-body p-3">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div>
+                    <h6 class="fw-bold mb-1"><i class="bi bi-cloud-arrow-up me-1"></i> Import from File</h6>
+                    <p class="text-muted small mb-0">Upload a scanned form, PDF, or Excel sheet to pre-fill this assessment. Review every field before saving — nothing is imported blindly.</p>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <input type="file" id="importFile" class="form-control form-control-sm" accept=".xlsx,.xls,.pdf,.png,.jpg,.jpeg" style="max-width:220px;">
+                    <button type="button" class="btn btn-primary btn-sm rounded-pill px-3" id="importBtn">
+                        <i class="bi bi-upload me-1"></i> Import
+                    </button>
+                </div>
+            </div>
+            <div id="importStatus" class="small mt-2 d-none"></div>
+        </div>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="card border-0 shadow-sm rounded-4 mb-3" id="progressCard">
         <div class="card-body p-3">
             <div class="progress mb-2" style="height: 8px;">
                 <div class="progress-bar" id="formProgressBar" role="progressbar" style="width: 10%;"></div>
@@ -80,8 +99,12 @@
 
     <!-- On-page validation message (no browser alert()) -->
     <div id="stepErrorBox" class="alert alert-danger small d-none mb-3" role="alert">
-        <div class="fw-bold mb-1"><i class="bi bi-exclamation-triangle me-1"></i> Please complete the required fields on this step before continuing:</div>
+        <div class="fw-bold mb-1"><i class="bi bi-exclamation-triangle me-1"></i> Please complete the required fields before continuing:</div>
         <ul class="mb-0 ps-3" id="stepErrorList"></ul>
+    </div>
+
+    <div id="reviewModeBanner" class="alert alert-info small d-none mb-3" role="alert">
+        <i class="bi bi-pencil-square me-1"></i> Showing the full imported assessment for review. Edit any field below, then Save Draft or Submit at the bottom.
     </div>
 
     <form method="POST" id="assessmentForm" novalidate>
@@ -393,6 +416,7 @@
 
     var sections = document.querySelectorAll(".form-section");
     var stepNav = document.getElementById("stepNav");
+    var progressCard = document.getElementById("progressCard");
     var progressBar = document.getElementById("formProgressBar");
     var prevBtn = document.getElementById("prevBtn");
     var nextBtn = document.getElementById("nextBtn");
@@ -401,6 +425,7 @@
     var formAction = document.getElementById("formAction");
     var errorBox = document.getElementById("stepErrorBox");
     var errorList = document.getElementById("stepErrorList");
+    var reviewMode = false;
 
     // Build step nav pills
     for (var i = 1; i <= TOTAL_STEPS; i++) {
@@ -527,6 +552,23 @@
     });
 
     submitBtn.addEventListener("click", function () {
+        if (reviewMode) {
+            // Everything is on screen at once here, so validate every step's
+            // rules together instead of just "current" (which has no real
+            // meaning once the wizard is flattened).
+            var allMissing = [];
+            for (var s = 1; s <= TOTAL_STEPS; s++) {
+                var m = validateStep(s);
+                if (m.length) allMissing = allMissing.concat(m);
+            }
+            if (allMissing.length > 0) {
+                showStepError(allMissing);
+                return;
+            }
+            formAction.value = "submit";
+            form.submit();
+            return;
+        }
         // Final submit still gets a full re-check of the last step on the page,
         // in case the person edited something and didn't press "Next" again.
         var missing = validateStep(current);
@@ -537,6 +579,22 @@
         formAction.value = "submit";
         form.submit();
     });
+
+    // Flattens the wizard into one continuous, scrollable, fully-editable
+    // form -- used after a file import so the coach can review every field
+    // at once instead of clicking through 10 steps. Called from the import
+    // script below via window.__enterAssessmentReviewMode().
+    function enterReviewMode() {
+        reviewMode = true;
+        clearStepError();
+        sections.forEach(function (s) { s.classList.remove("d-none"); });
+        progressCard.classList.add("d-none");
+        prevBtn.classList.add("d-none");
+        nextBtn.classList.add("d-none");
+        submitBtn.classList.remove("d-none");
+        document.getElementById("reviewModeBanner").classList.remove("d-none");
+    }
+    window.__enterAssessmentReviewMode = enterReviewMode;
 
     // Rating button groups
     document.querySelectorAll(".rating-group").forEach(function (group) {
@@ -564,6 +622,154 @@
     updateAttendancePreview();
 
     goToStep(1);
+})();
+</script>
+
+<script nonce="{{ csp_nonce() }}">
+(function () {
+    var importBtn = document.getElementById('importBtn');
+    var importFile = document.getElementById('importFile');
+    var importStatus = document.getElementById('importStatus');
+    if (!importBtn) return;
+
+    var csrfToken = document.querySelector('#assessmentForm input[name="csrf_token"]').value;
+    var uploadUrl = "{{ url_for('coach.coach_assessment_import_upload', athlete_id=athlete.id) }}";
+    var statusUrlTemplate = "{{ url_for('coach.coach_assessment_import_status', task_id='TASKID_PLACEHOLDER') }}";
+
+    function setStatus(text, cls) {
+        importStatus.className = 'small mt-2 ' + (cls || 'text-muted');
+        importStatus.textContent = text;
+        importStatus.classList.remove('d-none');
+    }
+
+    function applyRating(field, value) {
+        var hidden = document.getElementById(field);
+        var group = document.getElementById(field + '_group');
+        if (!hidden || !group) return false;
+        hidden.value = value;
+        group.querySelectorAll('.rating-btn').forEach(function (btn) {
+            btn.classList.toggle('active', btn.dataset.value === String(value));
+        });
+        group.classList.remove('rating-invalid');
+        return true;
+    }
+
+    // Returns 'ok' (applied), 'unmatched' (field exists but value didn't match
+    // any <select> option), or null (no matching form field at all -- e.g.
+    // calculated_age / age_group_focus / attendance_pct, which this app
+    // computes itself and doesn't take as direct input).
+    function applyField(key, rawValue) {
+        if (rawValue === null || rawValue === undefined || rawValue === '') return null;
+        var value = String(rawValue);
+
+        if (applyRating(key, value)) return 'ok';
+
+        var el = document.getElementById(key);
+        if (!el) return null;
+
+        if (el.tagName === 'SELECT') {
+            var matched = false;
+            Array.prototype.forEach.call(el.options, function (opt) {
+                if (opt.value && opt.value.toLowerCase() === value.toLowerCase()) {
+                    el.value = opt.value;
+                    matched = true;
+                }
+            });
+            return matched ? 'ok' : 'unmatched';
+        }
+
+        el.value = value;
+        return 'ok';
+    }
+
+    function applyImportedData(data) {
+        var applied = 0, unmatched = [];
+        Object.keys(data || {}).forEach(function (key) {
+            // Recomputed from sessions_planned/attended below instead of trusted
+            // as-is -- the import may use a different scale (e.g. 0-1 fraction)
+            // than the 0-100 percentage this app calculates and stores.
+            if (key === 'attendance_pct') return;
+            var result = applyField(key, data[key]);
+            if (result === 'ok') applied++;
+            if (result === 'unmatched') unmatched.push(key);
+        });
+
+        var planned = parseInt(document.getElementById('sessions_planned').value) || 0;
+        var attended = parseInt(document.getElementById('sessions_attended').value) || 0;
+        var attDisplay = document.getElementById('attendance_pct_display');
+        attDisplay.value = planned > 0 ? ((attended / planned) * 100).toFixed(1) + '%' : '';
+
+        var msg = 'Imported ' + applied + ' field' + (applied === 1 ? '' : 's') + '.';
+        if (unmatched.length) {
+            msg += ' Could not auto-match: ' + unmatched.join(', ') + ' — please set ' + (unmatched.length === 1 ? 'it' : 'them') + ' manually.';
+        }
+        msg += ' Please review every step before submitting, especially Talent Category and ratings.';
+        setStatus(msg, unmatched.length ? 'text-warning' : 'text-success');
+    }
+
+    function poll(taskId, attempt) {
+        attempt = attempt || 0;
+        if (attempt > 40) {
+            setStatus('Import timed out. The file may still be processing on the server — try checking back or re-uploading.', 'text-danger');
+            importBtn.disabled = false;
+            return;
+        }
+        fetch(statusUrlTemplate.replace('TASKID_PLACEHOLDER', taskId))
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                if (res.error) {
+                    setStatus('Import failed: ' + res.error, 'text-danger');
+                    importBtn.disabled = false;
+                    return;
+                }
+                if (res.status === 'completed') {
+                    setStatus('Processing complete — filling the form…', 'text-muted');
+                    applyImportedData(res.data || {});
+                    if (window.__enterAssessmentReviewMode) window.__enterAssessmentReviewMode();
+                    importBtn.disabled = false;
+                } else if (res.status === 'failed' || res.status === 'error') {
+                    setStatus('The document import service could not process this file. Please check it and try again.', 'text-danger');
+                    importBtn.disabled = false;
+                } else {
+                    setStatus('Processing (' + res.status + ')…', 'text-muted');
+                    setTimeout(function () { poll(taskId, attempt + 1); }, 3000);
+                }
+            })
+            .catch(function () {
+                setTimeout(function () { poll(taskId, attempt + 1); }, 3000);
+            });
+    }
+
+    importBtn.addEventListener('click', function () {
+        var file = importFile.files[0];
+        if (!file) { setStatus('Choose a file first.', 'text-danger'); return; }
+
+        importBtn.disabled = true;
+        setStatus('Uploading…', 'text-muted');
+
+        var fd = new FormData();
+        fd.append('file', file);
+
+        fetch(uploadUrl, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken },
+            body: fd,
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                if (res.error) {
+                    setStatus('Upload failed: ' + res.error, 'text-danger');
+                    importBtn.disabled = false;
+                    return;
+                }
+                setStatus('Queued for processing…', 'text-muted');
+                poll(res.task_id, 0);
+            })
+            .catch(function () {
+                setStatus('Could not upload the file. Check your connection and try again.', 'text-danger');
+                importBtn.disabled = false;
+            });
+    });
 })();
 </script>
 {% endblock %}

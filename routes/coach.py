@@ -3,6 +3,7 @@ from datetime import date
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 
 from common.decorators import login_required, role_required
+from common.portall_client import upload_document, get_task_status, PortallError
 from common.models import (
     list_athletes, get_athlete_by_id, create_athlete, update_athlete,
     archive_athlete, log_audit,
@@ -297,6 +298,46 @@ def coach_assessment_archive(assessment_id):
               target_type="ASSESSMENT", target_id=assessment_id)
     flash("Assessment archived." if new_status else "Assessment unarchived.", "success")
     return redirect(url_for("coach.coach_assessment_history", athlete_id=assessment["athlete_id"]))
+
+
+@bp.route("/coach/athletes/<int:athlete_id>/assessment/import-upload", methods=["POST"])
+@login_required
+@role_required("coach")
+def coach_assessment_import_upload(athlete_id):
+    """Uploads a scanned form / PDF / Excel sheet to the Portall extraction
+    service on behalf of the coach. Returns a task_id the browser polls via
+    coach_assessment_import_status() -- no assessment data is written here,
+    this only kicks off extraction."""
+    athlete = _owned_athlete_or_404(athlete_id)
+    if not athlete:
+        return jsonify(error="Athlete not found."), 404
+
+    file = request.files.get("file")
+    if not file or not file.filename:
+        return jsonify(error="No file selected."), 400
+
+    try:
+        result = upload_document(file)
+    except PortallError as e:
+        return jsonify(error=str(e)), 502
+
+    log_audit(session["user"]["username"], "coach", "IMPORT_ASSESSMENT_UPLOAD",
+              target_type="ATHLETE", target_id=athlete_id,
+              details=f"task_id={result.get('task_id')} filename={file.filename}")
+    return jsonify(task_id=result.get("task_id"), status=result.get("status"))
+
+
+@bp.route("/coach/assessment/import-status/<task_id>")
+@login_required
+@role_required("coach")
+def coach_assessment_import_status(task_id):
+    """Proxies the Portall status/result lookup so the API key never reaches
+    the browser. Returns the raw {success, status, data, ...} response."""
+    try:
+        result = get_task_status(task_id)
+    except PortallError as e:
+        return jsonify(error=str(e)), 502
+    return jsonify(result)
 
 
 # ---------------------------------------------------------------------------
