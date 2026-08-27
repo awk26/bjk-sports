@@ -3,7 +3,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from common.decorators import login_required
 from common.models import (
     verify_user, verify_superadmin, get_user_by_username,
-    get_coach_by_user_id, create_reset_token, get_reset_token,
+    get_coach_by_user_id, get_athlete_by_user_id, create_reset_token, get_reset_token,
     mark_reset_token_used, update_user_password,
 )
 
@@ -40,9 +40,16 @@ def login():
                 if coach:
                     session_user["coach_id"] = coach["id"]
 
+            elif user["role"] == "athlete":
+                athlete = get_athlete_by_user_id(user["id"])
+                if athlete:
+                    session_user["athlete_id"] = athlete["id"]
+
             session.permanent = True
             session["user"] = session_user
             flash(f"Welcome back, {user['name']}!", "success")
+            if user["role"] == "athlete":
+                return redirect(url_for("athlete.athlete_dashboard"))
             return redirect(url_for("dashboard"))
 
         flash("Invalid username or password.", "danger")

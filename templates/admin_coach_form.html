@@ -29,16 +29,50 @@
                             <input type="password" class="form-control" name="password" placeholder="{{ 'Leave blank to keep current' if coach else '' }}" {{ 'required' if not coach }}>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-medium">Full Name</label>
-                            <input type="text" class="form-control" name="name" value="{{ coach.name if coach else '' }}" required>
+                            <label class="form-label small fw-medium">Name</label>
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <input type="text" class="form-control" name="first_name" placeholder="First Name" value="{{ coach.first_name if coach else '' }}" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="text" class="form-control" name="middle_name" placeholder="Middle Name" value="{{ coach.middle_name if coach else '' }}">
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="text" class="form-control" name="last_name" placeholder="Last Name" value="{{ coach.last_name if coach else '' }}" required>
+                                </div>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label small fw-medium">Email</label>
                             <input type="email" class="form-control" name="email" value="{{ coach.email if coach else '' }}">
                         </div>
-                        <div class="mb-4">
+                        <div class="mb-3">
                             <label class="form-label small fw-medium">Specialty</label>
-                            <input type="text" class="form-control" name="specialty" value="{{ coach.specialty if coach else '' }}" placeholder="e.g. Basketball, Football, Swimming">
+                            <input type="text" class="form-control" name="specialty" value="{{ coach.specialty if coach else '' }}" placeholder="e.g. Youth Development, Strength & Conditioning">
+                            <div class="form-text">A short descriptive title — separate from the sports assigned below.</div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label small fw-medium">Sports Assigned</label>
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start" type="button"
+                                        id="sportsDropdownBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                                    <span id="sportsDropdownLabel">Select sports</span>
+                                </button>
+                                <ul class="dropdown-menu w-100 p-2" style="max-height: 240px; overflow-y: auto;" aria-labelledby="sportsDropdownBtn">
+                                    {% for s in all_sports %}
+                                    <li>
+                                        <label class="dropdown-item d-flex align-items-center gap-2 rounded-2">
+                                            <input type="checkbox" class="form-check-input mt-0 sport-checkbox" name="sport_ids" value="{{ s.id }}"
+                                                   {{ 'checked' if s.id in selected_sport_ids }}>
+                                            {{ s.name }}
+                                        </label>
+                                    </li>
+                                    {% else %}
+                                    <li><span class="dropdown-item-text text-muted small">No sports in the master list yet.</span></li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            <div class="form-text">Only sports assigned here will be available when this coach adds athletes.</div>
                         </div>
                         <div class="d-grid">
                             <button type="submit" class="btn btn-danger rounded-pill py-2 fw-medium">
@@ -52,4 +86,27 @@
         </div>
     </div>
 </div>
+
+<script nonce="{{ csp_nonce() }}">
+(function () {
+    var label = document.getElementById('sportsDropdownLabel');
+    var checkboxes = document.querySelectorAll('.sport-checkbox');
+
+    function updateLabel() {
+        var checked = Array.prototype.filter.call(checkboxes, function (cb) { return cb.checked; });
+        if (checked.length === 0) {
+            label.textContent = 'Select sports';
+        } else if (checked.length <= 2) {
+            label.textContent = checked.map(function (cb) {
+                return cb.closest('label').textContent.trim();
+            }).join(', ');
+        } else {
+            label.textContent = checked.length + ' sports selected';
+        }
+    }
+
+    checkboxes.forEach(function (cb) { cb.addEventListener('change', updateLabel); });
+    updateLabel();
+})();
+</script>
 {% endblock %}

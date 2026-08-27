@@ -20,6 +20,55 @@ def verify_superadmin(username: str, password: str) -> bool:
     return username == Config.SUPERADMIN_USERNAME and password == Config.SUPERADMIN_PASSWORD
 
 
+# ---------------------------------------------------------------------------
+# Name / phone form helpers (Add/Edit Admin, Coach, Athlete)
+# ---------------------------------------------------------------------------
+# The DB still stores one `name` string per person (users.name / athletes.name)
+# -- these just let the forms collect/display First/Middle/Last separately
+# without any schema change. Same idea for phone: stored as "+91 <number>",
+# split back apart for editing.
+
+def combine_name(first: str, middle: str, last: str) -> str:
+    parts = [p.strip() for p in (first, middle, last) if p and p.strip()]
+    return " ".join(parts)
+
+
+def split_name(full_name: str | None) -> tuple[str, str, str]:
+    """Best-effort split of a single stored name back into
+    (first, middle, last) for pre-filling the edit forms -- there's no
+    separate first/middle/last columns, so this is a heuristic: first word
+    = first name, last word = last name, anything in between = middle."""
+    if not full_name:
+        return "", "", ""
+    parts = full_name.strip().split()
+    if len(parts) == 1:
+        return parts[0], "", ""
+    if len(parts) == 2:
+        return parts[0], "", parts[1]
+    return parts[0], " ".join(parts[1:-1]), parts[-1]
+
+
+def format_phone_in(local_number: str | None) -> str:
+    """Prefixes a phone number with +91 for storage. Leaves it untouched if
+    already prefixed (e.g. an existing value from before this feature), and
+    returns '' for a blank input."""
+    raw = (local_number or "").strip()
+    if not raw:
+        return ""
+    if raw.startswith("+"):
+        return raw
+    return f"+91 {raw}"
+
+
+def strip_phone_prefix(stored_phone: str | None) -> str:
+    """Reverses format_phone_in() for pre-filling the edit form -- shows
+    just the local number next to the fixed +91 prefix in the UI."""
+    raw = (stored_phone or "").strip()
+    if raw.startswith("+91"):
+        return raw[3:].strip()
+    return raw
+
+
 def verify_user(username: str, password: str) -> dict | None:
     user = get_user_by_username(username)
     if not user:
@@ -130,20 +179,39 @@ def _next_athlete_code() -> str:
     return f"ATH-{next_id:03d}"
 
 
-def create_athlete(name, email, phone, dob, sport, coach_id, created_by=None) -> int:
+def create_athlete(first_name: str, middle_name: str, last_name: str,
+                    email, phone, dob, sport, coach_id, created_by=None,
+                    username: str | None = None, password: str | None = None) -> int:
+    """Creates an athlete row with split first / middle / last name fields.
+    The DB `name` column is a generated column computed from the three parts.
+
+    If username+password are both given, also creates a login (a users
+    row with role='athlete') and links it via athletes.user_id -- same
+    pattern as create_coach(). Leave them blank to create an athlete with
+    no login access (can be granted later via set_athlete_login())."""
     code = _next_athlete_code()
+    full_name = combine_name(first_name, middle_name, last_name)
+    user_id = None
+    if username and password:
+        user_id = create_user(username, password, "athlete", full_name, email, created_by)
     result = db.call_proc(
         "sp_athlete_create",
-        (code, name, email or None, phone or None, dob or None, sport or None,
-         coach_id, created_by, None),
+        (code,
+         first_name or "", middle_name or "", last_name or "",
+         email or None, phone or None, dob or None, sport or None,
+         coach_id, created_by, user_id, None),
     )
-    return result["out_params"]["p8"]
+    return result["out_params"]["p11"]
 
 
-def update_athlete(athlete_id, name, email, phone, dob, sport, coach_id):
+def update_athlete(athlete_id, first_name: str, middle_name: str, last_name: str,
+                   email, phone, dob, sport, coach_id):
+    """Updates an athlete's profile with split name fields."""
     db.call_proc(
         "sp_athlete_update",
-        (athlete_id, name, email or None, phone or None, dob or None, sport or None, coach_id),
+        (athlete_id,
+         first_name or "", middle_name or "", last_name or "",
+         email or None, phone or None, dob or None, sport or None, coach_id),
     )
 
 
@@ -153,6 +221,93 @@ def archive_athlete(athlete_id: int, is_archived: bool):
 
 def delete_athlete(athlete_id: int):
     db.call_proc("sp_athlete_delete", (athlete_id,))
+
+
+# ---------------------------------------------------------------------------
+# Athlete login (see common/athlete_login_schema.sql)
+# ---------------------------------------------------------------------------
+
+def get_athlete_by_user_id(user_id: int) -> dict | None:
+    rows = db.call_proc("sp_athlete_get_by_user_id", (user_id,))["rows"]
+    return rows[0] if rows else None
+
+
+def get_athlete_login_info(athlete_id: int) -> dict | None:
+    """Returns {athlete_id, user_id, username} -- user_id/username are None
+    if this athlete has no login yet. Used by the athlete forms to decide
+    whether to show 'create login' or 'reset password' fields."""
+    rows = db.call_proc("sp_athlete_login_info", (athlete_id,))["rows"]
+    return rows[0] if rows else None
+
+
+def set_athlete_login(athlete_id: int, name: str, email: str, username: str,
+                       password: str, created_by=None) -> int:
+    """Grants login access to an existing athlete who doesn't have one yet."""
+    user_id = create_user(username, password, "athlete", name, email, created_by)
+    db.call_proc("sp_athlete_link_user", (athlete_id, user_id))
+    return user_id
+
+
+# ---------------------------------------------------------------------------
+# Sports Master (+ coach/athlete multi-sport assignment)
+# ---------------------------------------------------------------------------
+# See common/sports_schema.sql for the tables/procs this wraps. The legacy
+# athletes.sport column is left untouched by everything below -- routes/*.py
+# keeps it synced to a comma-joined list of selected sport names whenever an
+# athlete is saved, so every existing dashboard/report query that reads
+# athletes.sport keeps working unchanged.
+
+def list_sports(is_archived: bool | None = None) -> list[dict]:
+    return db.call_proc("sp_sport_list", (is_archived,))["rows"]
+
+
+def get_sport_by_id(sport_id: int) -> dict | None:
+    rows = db.call_proc("sp_sport_get_by_id", (sport_id,))["rows"]
+    return rows[0] if rows else None
+
+
+def get_sport_by_name(name: str) -> dict | None:
+    rows = db.call_proc("sp_sport_get_by_name", (name,))["rows"]
+    return rows[0] if rows else None
+
+
+def create_sport(name: str) -> int:
+    result = db.call_proc("sp_sport_create", (name, None))
+    return result["out_params"]["p1"]
+
+
+def update_sport(sport_id: int, name: str):
+    db.call_proc("sp_sport_update", (sport_id, name))
+
+
+def archive_sport(sport_id: int, is_archived: bool):
+    db.call_proc("sp_sport_archive", (sport_id, is_archived))
+
+
+def get_coach_sports(coach_id: int) -> list[dict]:
+    return db.call_proc("sp_coach_sports_get", (coach_id,))["rows"]
+
+
+def set_coach_sports(coach_id: int, sport_ids: list[int]):
+    """Replaces a coach's full sport assignment list."""
+    db.call_proc("sp_coach_sports_clear", (coach_id,))
+    for sid in sport_ids:
+        db.call_proc("sp_coach_sports_add", (coach_id, sid))
+
+
+def get_athlete_sports(athlete_id: int) -> list[dict]:
+    return db.call_proc("sp_athlete_sports_get", (athlete_id,))["rows"]
+
+
+def set_athlete_sports(athlete_id: int, sport_ids: list[int]):
+    """Replaces an athlete's full sport assignment list (the athlete_sports
+    junction table). Does NOT touch athletes.sport -- callers pass the
+    already-synced comma-joined string straight into create_athlete/
+    update_athlete themselves, since that's the single source of truth
+    those functions already write to."""
+    db.call_proc("sp_athlete_sports_clear", (athlete_id,))
+    for sid in sport_ids:
+        db.call_proc("sp_athlete_sports_add", (athlete_id, sid))
 
 
 # ---------------------------------------------------------------------------

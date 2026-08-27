@@ -50,6 +50,7 @@ def upload_document(file_storage) -> dict:
             headers={"X-API-Key": PORTALL_API_KEY_UPLOAD},
             files={"file": (file_storage.filename, file_storage.stream, file_storage.mimetype)},
             timeout=30,
+            verify=False
         )
     except requests.RequestException as e:
         log(f"portall_client: upload request failed: {e}")
@@ -81,6 +82,7 @@ def get_task_status(task_id: str) -> dict:
             f"{PORTALL_BASE_URL}/api/public/status/{task_id}",
             headers={"X-API-Key": PORTALL_API_KEY_EXTRACT},
             timeout=30,
+            verify=False
         )
     except requests.RequestException as e:
         log(f"portall_client: status request failed: {e}")

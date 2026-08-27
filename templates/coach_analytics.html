@@ -27,6 +27,23 @@
         </div>
     </div>
 
+    <div class="two-col highlight-row d-none" id="highlightRow">
+        <div class="pd-card highlight-card highlight-top">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="bi bi-trophy-fill"></i>
+                <p class="section-label mb-0">Top 5 Performers</p>
+            </div>
+            <div id="topPerformerList" class="highlight-list"></div>
+        </div>
+        <div class="pd-card highlight-card highlight-low">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <p class="section-label mb-0">Needs Attention (Bottom 5)</p>
+            </div>
+            <div id="lowPerformerList" class="highlight-list"></div>
+        </div>
+    </div>
+
     <div class="pd-card">
         <div class="profile-row">
             <div class="profile-left">
@@ -122,6 +139,26 @@
     .athlete-dropdown-list .opt:hover{background:#F7F9FC;}
     .athlete-dropdown-list .opt.active{background:var(--accent-light);font-weight:500;}
     .athlete-dropdown-list .opt-empty{padding:9px 14px;font-size:13px;color:var(--text-muted);}
+
+    .highlight-row{margin-bottom:20px;}
+    .highlight-card{border-left-width:4px;border-left-style:solid;}
+    .highlight-top{border-left-color:var(--success);}
+    .highlight-low{border-left-color:var(--danger);}
+    .highlight-top > div > i{color:var(--success);}
+    .highlight-low > div > i{color:var(--danger);}
+
+    .highlight-list{display:flex;flex-direction:column;}
+    .highlight-row-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;border-radius:6px;transition:background .12s ease;}
+    .highlight-row-item:last-child{border-bottom:none;}
+    .highlight-row-item:hover{background:#F7F9FC;}
+    .highlight-row-item.active{background:var(--accent-light);}
+    .highlight-rank{width:20px;flex:0 0 auto;font-size:12px;font-weight:700;color:var(--text-muted);text-align:center;}
+    .highlight-info{flex:1 1 auto;min-width:0;}
+    .highlight-name{font-size:13.5px;font-weight:600;color:#1A2333;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .highlight-sport{font-size:11.5px;color:var(--text-secondary);margin:1px 0 0;}
+    .highlight-index{font-family:Georgia,'Times New Roman',serif;font-size:18px;font-weight:500;line-height:1;color:#1A2333;margin:0;flex:0 0 auto;text-align:right;}
+    .highlight-delta{font-size:11px;font-weight:600;margin:2px 0 0;text-align:right;flex:0 0 auto;}
+    .highlight-empty{font-size:13px;color:var(--text-muted);padding:8px 0;}
 
     .profile-row{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
     .profile-left{display:flex;align-items:center;gap:14px;}
@@ -248,6 +285,16 @@
     [data-bs-theme="dark"] .athlete-dropdown-list .opt.active { background: rgba(0,188,212,.15); color: #00bcd4; }
     [data-bs-theme="dark"] .athlete-dropdown-list .opt-empty { color: #4a5568; }
 
+    /* Highlight cards */
+    [data-bs-theme="dark"] .highlight-row-item:hover { background: #1a1e28; }
+    [data-bs-theme="dark"] .highlight-row-item.active { background: rgba(0,188,212,.15); }
+    [data-bs-theme="dark"] .highlight-row-item { border-bottom-color: #1e2330; }
+    [data-bs-theme="dark"] .highlight-name { color: #e0e7ef; }
+    [data-bs-theme="dark"] .highlight-sport { color: #7a8599; }
+    [data-bs-theme="dark"] .highlight-index { color: #e0e7ef; }
+    [data-bs-theme="dark"] .highlight-rank { color: #4a5568; }
+    [data-bs-theme="dark"] .highlight-empty { color: #4a5568; }
+
     /* Profile card */
     [data-bs-theme="dark"] .avatar { background: rgba(0,188,212,.15); color: #00bcd4; }
     [data-bs-theme="dark"] #a-name { color: #e0e7ef; }
@@ -288,9 +335,13 @@
     var athletes = {{ dashboard.athletes | tojson }};
     var squadAvgIndex = {{ dashboard.squad_avg_index | tojson }};
     var squadAvgTrend = {{ dashboard.squad_avg_trend | tojson }};
+    var focusAthleteId = {{ focus_athlete_id | tojson }};
     if (!athletes.length) return;
 
     var selectedId = athletes[0].id;
+    if (focusAthleteId && athletes.some(function (a) { return a.id === focusAthleteId; })) {
+        selectedId = focusAthleteId;
+    }
     var rangeChart, lineChart;
 
     function initials(name) { return name.split(' ').map(function (p) { return p[0]; }).join('').slice(0, 2).toUpperCase(); }
@@ -301,6 +352,43 @@
     function attColor(pct) {
         if (pct === null || pct === undefined) return 'att-unknown';
         return pct >= 90 ? 'att-good' : pct >= 75 ? 'att-fair' : 'att-poor';
+    }
+
+    function renderHighlights() {
+        var withData = athletes.filter(function (a) { return a.has_data; });
+        var row = document.getElementById('highlightRow');
+        if (!withData.length) {
+            row.classList.add('d-none');
+            return;
+        }
+        row.classList.remove('d-none');
+
+        var sorted = withData.slice().sort(function (a, b) { return b.index - a.index; });
+        var top5 = sorted.slice(0, 5);
+        var bottom5 = sorted.slice(-5).reverse();
+
+        function renderList(container, list, startRank) {
+            if (!list.length) {
+                container.innerHTML = '<p class="highlight-empty">No data yet.</p>';
+                return;
+            }
+            container.innerHTML = list.map(function (a, i) {
+                var deltaColor = a.delta >= 0 ? 'pd-positive' : 'pd-negative';
+                var activeClass = a.id === selectedId ? ' active' : '';
+                return '<div class="highlight-row-item' + activeClass + '" data-id="' + a.id + '">' +
+                    '<span class="highlight-rank">' + (startRank + i) + '</span>' +
+                    '<div class="highlight-info"><p class="highlight-name">' + a.name + '</p>' +
+                    '<p class="highlight-sport">' + a.sport + '</p></div>' +
+                    '<div><p class="highlight-index">' + a.index + '</p>' +
+                    '<p class="highlight-delta ' + deltaColor + '">' + fmtDelta(a.delta) + '</p></div></div>';
+            }).join('');
+            container.querySelectorAll('.highlight-row-item').forEach(function (item) {
+                item.addEventListener('click', function () { selectAthlete(parseInt(item.dataset.id)); });
+            });
+        }
+
+        renderList(document.getElementById('topPerformerList'), top5, 1);
+        renderList(document.getElementById('lowPerformerList'), bottom5, 1);
     }
 
     var searchInput = document.getElementById('athleteSearchInput');
@@ -465,6 +553,7 @@
 
         searchInput.value = a.name;
         closeDropdown();
+        renderHighlights();
     }
 
     searchInput.value = athletes[0].name;

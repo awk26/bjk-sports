@@ -20,13 +20,56 @@
                 <div class="card-body p-4">
                     <form method="POST">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <!-- Login Credentials -->
                         <div class="mb-3">
-                            <label class="form-label small fw-medium">Full Name</label>
-                            <input type="text" class="form-control" name="name" value="{{ athlete.name if athlete else '' }}" required>
+                            <label class="form-label small fw-medium">
+                                <i class="bi bi-key me-1 text-primary"></i> Login Credentials
+                                {% if not athlete %}
+                                <span class="text-danger">*</span>
+                                {% endif %}
+                            </label>
+                            {% if login_info and login_info.user_id %}
+                            <div class="alert alert-success py-2 small mb-2">
+                                <i class="bi bi-person-check me-1"></i>
+                                Athlete already has a login: <strong>{{ login_info.username }}</strong>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small text-muted">New Password <span class="fw-normal">(leave blank to keep current)</span></label>
+                                <input type="password" class="form-control" name="login_password" placeholder="Set a new password">
+                            </div>
+                            {% else %}
+                            <div class="form-text mb-2">
+                                Create a username &amp; password so this athlete can log in and view their dashboard. {% if not athlete %}Username and password are required.{% else %}Leave blank if not granting access.{% endif %}
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-sm-6">
+                                    <input type="text" class="form-control" name="login_username" placeholder="Username" autocomplete="off" {{ 'required' if not athlete else '' }}>
+                                </div>
+                                <div class="col-sm-6">
+                                    <input type="password" class="form-control" name="login_password" placeholder="Password" autocomplete="new-password" {{ 'required' if not athlete else '' }}>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <hr class="my-3">
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-medium">Name</label>
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <input type="text" class="form-control" name="first_name" placeholder="First Name" value="{{ athlete.first_name if athlete else '' }}" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="text" class="form-control" name="middle_name" placeholder="Middle Name" value="{{ athlete.middle_name if athlete else '' }}">
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="text" class="form-control" name="last_name" placeholder="Last Name" value="{{ athlete.last_name if athlete else '' }}" required>
+                                </div>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label small fw-medium">Assigned Coach</label>
-                            <select class="form-select" name="coach_id" required>
+                            <select class="form-select" name="coach_id" id="coachSelect" required>
                                 <option value="" disabled {{ 'selected' if not athlete }}>Select a coach</option>
                                 {% for coach_id, name in coaches %}
                                 <option value="{{ coach_id }}" {{ 'selected' if athlete and athlete.coach_id == coach_id }}>{{ name }}</option>
@@ -39,15 +82,30 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label small fw-medium">Phone</label>
-                            <input type="text" class="form-control" name="phone" value="{{ athlete.phone if athlete else '' }}">
+                            <div class="input-group">
+                                <span class="input-group-text">+91</span>
+                                <input type="tel" class="form-control" name="phone" value="{{ athlete.phone if athlete else '' }}" placeholder="10-digit mobile number" maxlength="10" pattern="[0-9]{10}">
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label small fw-medium">Date of Birth</label>
-                            <input type="date" class="form-control" name="dob" value="{{ athlete.dob if athlete else '' }}">
+                            <input type="text" class="form-control" id="dobDisplay" placeholder="DD/MM/YYYY"
+                                   inputmode="numeric" maxlength="10" autocomplete="off">
+                            <input type="hidden" name="dob" id="dobIso" value="{{ athlete.dob if athlete else '' }}">
+                            <div class="form-text">Format: DD/MM/YYYY</div>
                         </div>
                         <div class="mb-4">
-                            <label class="form-label small fw-medium">Sport</label>
-                            <input type="text" class="form-control" name="sport" value="{{ athlete.sport if athlete else '' }}" placeholder="e.g. Basketball, Football, Swimming">
+                            <label class="form-label small fw-medium">Sports</label>
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start" type="button"
+                                        id="sportsDropdownBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                                    <span id="sportsDropdownLabel">Select a coach first</span>
+                                </button>
+                                <ul class="dropdown-menu w-100 p-2" id="sportsDropdownMenu" style="max-height: 240px; overflow-y: auto;" aria-labelledby="sportsDropdownBtn">
+                                    <!-- populated by JS based on selected coach -->
+                                </ul>
+                            </div>
+                            <div class="form-text">Only sports the selected coach is assigned to are shown here.</div>
                         </div>
                         <div class="d-grid">
                             <button type="submit" class="btn btn-primary rounded-pill py-2 fw-medium">
@@ -61,4 +119,95 @@
         </div>
     </div>
 </div>
+
+<script nonce="{{ csp_nonce() }}">
+(function () {
+    var allSports = {{ all_sports | tojson }};
+    var coachSportsMap = {{ coach_sports_map | tojson }};
+    var selectedSportIds = {{ selected_sport_ids | tojson }};
+
+    var coachSelect = document.getElementById('coachSelect');
+    var menu = document.getElementById('sportsDropdownMenu');
+    var label = document.getElementById('sportsDropdownLabel');
+
+    function sportsForCoach(coachId) {
+        var ids = coachSportsMap[coachId] || coachSportsMap[String(coachId)] || [];
+        return allSports.filter(function (s) { return ids.indexOf(s.id) !== -1; });
+    }
+
+    function updateLabel() {
+        var checked = Array.prototype.filter.call(menu.querySelectorAll('.sport-checkbox'), function (cb) { return cb.checked; });
+        if (!coachSelect.value) {
+            label.textContent = 'Select a coach first';
+        } else if (checked.length === 0) {
+            label.textContent = 'Select sports';
+        } else if (checked.length <= 2) {
+            label.textContent = checked.map(function (cb) { return cb.closest('label').textContent.trim(); }).join(', ');
+        } else {
+            label.textContent = checked.length + ' sports selected';
+        }
+    }
+
+    function renderSports(preserveSelection) {
+        var coachId = coachSelect.value;
+        var sports = coachId ? sportsForCoach(coachId) : [];
+        var previouslyChecked = preserveSelection
+            ? Array.prototype.map.call(menu.querySelectorAll('.sport-checkbox:checked'), function (cb) { return parseInt(cb.value); })
+            : selectedSportIds;
+
+        if (!coachId) {
+            menu.innerHTML = '<li><span class="dropdown-item-text text-muted small">Select a coach first.</span></li>';
+        } else if (sports.length === 0) {
+            menu.innerHTML = '<li><span class="dropdown-item-text text-muted small">This coach has no sports assigned yet.</span></li>';
+        } else {
+            menu.innerHTML = sports.map(function (s) {
+                var checked = previouslyChecked.indexOf(s.id) !== -1 ? 'checked' : '';
+                return '<li><label class="dropdown-item d-flex align-items-center gap-2 rounded-2">' +
+                    '<input type="checkbox" class="form-check-input mt-0 sport-checkbox" name="sport_ids" value="' + s.id + '" ' + checked + '>' +
+                    s.name + '</label></li>';
+            }).join('');
+        }
+
+        menu.querySelectorAll('.sport-checkbox').forEach(function (cb) { cb.addEventListener('change', updateLabel); });
+        updateLabel();
+    }
+
+    coachSelect.addEventListener('change', function () { renderSports(false); });
+    renderSports(true);
+})();
+
+(function () {
+    // Date of Birth: shown/typed as DD/MM/YYYY, submitted as the ISO
+    // YYYY-MM-DD the backend already expects -- see #dobIso below.
+    var dobDisplay = document.getElementById('dobDisplay');
+    var dobIso = document.getElementById('dobIso');
+
+    function isoToDisplay(iso) {
+        var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
+        return m ? (m[3] + '/' + m[2] + '/' + m[1]) : '';
+    }
+
+    function displayToIso(display) {
+        var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(display || '');
+        if (!m) return '';
+        var d = parseInt(m[1], 10), mo = parseInt(m[2], 10), y = parseInt(m[3], 10);
+        if (mo < 1 || mo > 12 || d < 1 || d > 31 || y < 1900 || y > 2100) return '';
+        return m[3] + '-' + m[2] + '-' + m[1];
+    }
+
+    dobDisplay.value = isoToDisplay(dobIso.value);
+
+    dobDisplay.addEventListener('input', function () {
+        var digits = dobDisplay.value.replace(/\D/g, '').slice(0, 8);
+        var out = digits;
+        if (digits.length > 4) out = digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4);
+        else if (digits.length > 2) out = digits.slice(0, 2) + '/' + digits.slice(2);
+        dobDisplay.value = out;
+    });
+
+    function syncIso() { dobIso.value = displayToIso(dobDisplay.value); }
+    dobDisplay.addEventListener('blur', syncIso);
+    dobDisplay.closest('form').addEventListener('submit', syncIso);
+})();
+</script>
 {% endblock %}

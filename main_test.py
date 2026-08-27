@@ -10,7 +10,7 @@ from flask_wtf.csrf import CSRFProtect
 from common.config import Config
 from common.models import init_default_data
 from common.decorators import login_required
-from routes import auth, admin, coach, superadmin, athlete
+from routes import auth, admin, coach, superadmin
 from common.models import (
     get_coach_dashboard_stats,
     get_admin_dashboard_stats,
@@ -37,7 +37,6 @@ def create_app():
     app.register_blueprint(admin.bp)
     app.register_blueprint(coach.bp)
     app.register_blueprint(superadmin.bp)
-    app.register_blueprint(athlete.bp)
 
     init_default_data()
 
@@ -86,6 +85,9 @@ def create_app():
         return redirect(url_for("auth.login"))
 
   
+
+    
+
     
 
     @app.route("/dashboard")
@@ -193,10 +195,11 @@ def create_app():
 
         # Cap to 8 results
         return jsonify(results=results[:8])
+
     return app
 
 
 app = create_app()
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5003)
+    app.run(host='0.0.0.0', port=5004)

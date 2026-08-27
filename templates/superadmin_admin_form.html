@@ -29,8 +29,18 @@
                             <input type="password" class="form-control" name="password" placeholder="{{ 'Leave blank to keep current' if admin else '' }}" {{ 'required' if not admin }}>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-medium">Full Name</label>
-                            <input type="text" class="form-control" name="name" value="{{ admin.name if admin else '' }}" required>
+                            <label class="form-label small fw-medium">Name</label>
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <input type="text" class="form-control" name="first_name" placeholder="First Name" value="{{ admin.first_name if admin else '' }}" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="text" class="form-control" name="middle_name" placeholder="Middle Name" value="{{ admin.middle_name if admin else '' }}">
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="text" class="form-control" name="last_name" placeholder="Last Name" value="{{ admin.last_name if admin else '' }}" required>
+                                </div>
+                            </div>
                         </div>
                         <div class="mb-4">
                             <label class="form-label small fw-medium">Email</label>

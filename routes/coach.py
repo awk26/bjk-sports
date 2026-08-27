@@ -11,9 +11,32 @@ from common.models import (
     get_assessment_by_id, list_assessments, create_assessment, update_assessment,
     archive_assessment, get_coach_analytics, get_athlete_analytics,
     get_squad_performance_dashboard, get_athlete_recommendations,
+    get_coach_sports, get_athlete_sports, set_athlete_sports,
+    get_athlete_login_info, set_athlete_login, get_user_by_username, update_user_password,
 )
 
 bp = Blueprint("coach", __name__)
+
+
+def _combine_name(form):
+    """Join first / middle / last name fields into a single name string."""
+    parts = [form.get("first_name", "").strip(),
+             form.get("middle_name", "").strip(),
+             form.get("last_name", "").strip()]
+    return " ".join(p for p in parts if p)
+
+
+def _split_name(full_name):
+    """Split a stored full name into first / middle / last for the form."""
+    parts = (full_name or "").split()
+    if len(parts) == 0:
+        return "", "", ""
+    elif len(parts) == 1:
+        return parts[0], "", ""
+    elif len(parts) == 2:
+        return parts[0], "", parts[1]
+    else:
+        return parts[0], " ".join(parts[1:-1]), parts[-1]
 
 
 def _coach_id():
@@ -42,24 +65,47 @@ def coach_athletes():
 @login_required
 @role_required("coach")
 def coach_athlete_create():
+    # A coach can only assign athletes to sports THEY have been assigned to
+    # (see Sports Master, managed by admin/superadmin).
+    my_sports = get_coach_sports(_coach_id())
+
     if request.method == "POST":
-        name = request.form.get("name", "").strip()
+        first_name  = request.form.get("first_name", "").strip()
+        middle_name = request.form.get("middle_name", "").strip()
+        last_name   = request.form.get("last_name", "").strip()
         email = request.form.get("email", "").strip()
         phone = request.form.get("phone", "").strip()
+        if phone and not phone.startswith("+91"):
+            phone = "+91" + phone
         dob = request.form.get("dob", "").strip()
-        sport = request.form.get("sport", "").strip()
+        my_sport_ids = {s["id"] for s in my_sports}
+        sport_ids = [int(x) for x in request.form.getlist("sport_ids")
+                     if x.isdigit() and int(x) in my_sport_ids]
+        sport_text = ", ".join(s["name"] for s in my_sports if s["id"] in sport_ids)
+        login_username = request.form.get("login_username", "").strip()
+        login_password = request.form.get("login_password", "")
 
-        if not name:
-            flash("Athlete name is required.", "danger")
+        if not first_name or not last_name:
+            flash("First name and last name are required.", "danger")
+        elif not login_username or not login_password:
+            flash("Username and password are required.", "danger")
+        elif login_username and get_user_by_username(login_username):
+            flash("That login username is already taken.", "danger")
         else:
-            athlete_id = create_athlete(name, email, phone, dob, sport,
-                                         _coach_id(), created_by=session["user"]["id"])
+            athlete_id = create_athlete(
+                first_name, middle_name, last_name,
+                email, phone, dob, sport_text,
+                _coach_id(), created_by=session["user"]["id"],
+                username=login_username or None, password=login_password or None)
+            set_athlete_sports(athlete_id, sport_ids)
             log_audit(session["user"]["username"], "coach", "CREATE_ATHLETE",
                       target_type="ATHLETE", target_id=athlete_id)
-            flash(f"Athlete '{name}' created successfully.", "success")
+            full_name = " ".join(p for p in [first_name, middle_name, last_name] if p)
+            flash(f"Athlete '{full_name}' created successfully.", "success")
             return redirect(url_for("coach.coach_athletes"))
 
-    return render_template("coach_athlete_form.html", athlete=None)
+    return render_template("coach_athlete_form.html", athlete=None, my_sports=my_sports,
+                           selected_sport_ids=[], login_info=None)
 
 
 @bp.route("/coach/athletes/<int:athlete_id>/edit", methods=["GET", "POST"])
@@ -71,23 +117,53 @@ def coach_athlete_edit(athlete_id):
         flash("Athlete not found.", "danger")
         return redirect(url_for("coach.coach_athletes"))
 
+    my_sports = get_coach_sports(_coach_id())
+    selected_sport_ids = [s["id"] for s in get_athlete_sports(athlete_id)]
+    login_info = get_athlete_login_info(athlete_id)
+
     if request.method == "POST":
-        name = request.form.get("name", "").strip()
+        first_name  = request.form.get("first_name", "").strip()
+        middle_name = request.form.get("middle_name", "").strip()
+        last_name   = request.form.get("last_name", "").strip()
         email = request.form.get("email", "").strip()
         phone = request.form.get("phone", "").strip()
+        if phone and not phone.startswith("+91"):
+            phone = "+91" + phone
         dob = request.form.get("dob", "").strip()
-        sport = request.form.get("sport", "").strip()
+        my_sport_ids = {s["id"] for s in my_sports}
+        sport_ids = [int(x) for x in request.form.getlist("sport_ids")
+                     if x.isdigit() and int(x) in my_sport_ids]
+        sport_text = ", ".join(s["name"] for s in my_sports if s["id"] in sport_ids)
+        login_password = request.form.get("login_password", "")
+        login_username = request.form.get("login_username", "").strip()
 
-        if not name:
-            flash("Athlete name is required.", "danger")
+        if not first_name or not last_name:
+            flash("First name and last name are required.", "danger")
+        elif not login_info.get("user_id") and login_username and get_user_by_username(login_username):
+            flash("That login username is already taken.", "danger")
         else:
-            update_athlete(athlete_id, name, email, phone, dob, sport, _coach_id())
+            update_athlete(athlete_id, first_name, middle_name, last_name,
+                           email, phone, dob, sport_text, _coach_id())
+            set_athlete_sports(athlete_id, sport_ids)
+
+            if login_info.get("user_id"):
+                if login_password:
+                    update_user_password(login_info["user_id"], login_password)
+            elif login_username and login_password:
+                full_name = " ".join(p for p in [first_name, middle_name, last_name] if p)
+                set_athlete_login(athlete_id, full_name, email, login_username, login_password,
+                                   created_by=session["user"]["id"])
+
             log_audit(session["user"]["username"], "coach", "UPDATE_ATHLETE",
                       target_type="ATHLETE", target_id=athlete_id)
-            flash(f"Athlete '{name}' updated successfully.", "success")
+            full_name = " ".join(p for p in [first_name, middle_name, last_name] if p)
+            flash(f"Athlete '{full_name}' updated successfully.", "success")
             return redirect(url_for("coach.coach_athletes"))
 
-    return render_template("coach_athlete_form.html", athlete=athlete)
+    if athlete.get("phone") and athlete["phone"].startswith("+91"):
+        athlete["phone"] = athlete["phone"][3:]
+    return render_template("coach_athlete_form.html", athlete=athlete, my_sports=my_sports,
+                            selected_sport_ids=selected_sport_ids, login_info=login_info)
 
 
 @bp.route("/coach/athletes/<int:athlete_id>/archive", methods=["POST"])
@@ -104,7 +180,7 @@ def coach_athlete_archive(athlete_id):
     log_audit(session["user"]["username"], "coach",
               "ARCHIVE_ATHLETE" if new_status else "UNARCHIVE_ATHLETE",
               target_type="ATHLETE", target_id=athlete_id)
-    status = "archived" if new_status else "unarchived"
+    status = "deactivated" if new_status else "activated"
     flash(f"Athlete '{athlete['name']}' has been {status}.", "success")
     return redirect(url_for("coach.coach_athletes"))
 
@@ -349,20 +425,25 @@ def coach_assessment_import_status(task_id):
 @role_required("coach")
 def coach_analytics():
     dashboard = get_squad_performance_dashboard(_coach_id())
-    return render_template("coach_analytics.html", dashboard=dashboard)
+    # ?athlete_id=<id> lets other pages (e.g. the athlete list) deep-link
+    # straight to a specific athlete inside this unified dashboard.
+    focus_athlete_id = request.args.get("athlete_id", type=int)
+    return render_template("coach_analytics.html", dashboard=dashboard, focus_athlete_id=focus_athlete_id)
 
 
 @bp.route("/coach/athletes/<int:athlete_id>/analytics")
 @login_required
 @role_required("coach")
 def coach_athlete_analytics(athlete_id):
+    # Deprecated: the standalone per-athlete dashboard has been merged into
+    # the squad analytics page, which can focus a single athlete via
+    # ?athlete_id=. Kept as a redirect so old links/bookmarks still work.
     athlete = _owned_athlete_or_404(athlete_id)
     if not athlete:
         flash("Athlete not found.", "danger")
         return redirect(url_for("coach.coach_athletes"))
 
-    analytics = get_athlete_analytics(athlete_id, _coach_id())
-    return render_template("coach_athlete_analytics.html", athlete=athlete, analytics=analytics)
+    return redirect(url_for("coach.coach_analytics", athlete_id=athlete_id))
 
 
 @bp.route("/coach/athletes/<int:athlete_id>/recommendations")

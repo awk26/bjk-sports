@@ -43,7 +43,7 @@
                             <td class="py-2">{{ athlete.sport or '-' }}</td>
                             <td class="py-2">
                                 {% if athlete.is_archived %}
-                                    <span class="badge bg-secondary rounded-pill">Archived</span>
+                                    <span class="badge bg-secondary rounded-pill">Inactive</span>
                                 {% else %}
                                     <span class="badge bg-success rounded-pill">Active</span>
                                 {% endif %}
@@ -55,8 +55,8 @@
                                 <form method="POST" action="{{ url_for('admin.admin_athlete_archive', athlete_id=athlete.id) }}" class="d-inline">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn btn-outline-{{ 'success' if athlete.is_archived else 'secondary' }} btn-sm rounded-pill px-3">
-                                        <i class="bi bi-{{ 'archive' if not athlete.is_archived else 'arrow-up-circle' }}"></i>
-                                        {{ 'Archive' if not athlete.is_archived else 'Unarchive' }}
+                                        <i class="bi bi-{{ 'toggle2-off' if not athlete.is_archived else 'toggle2-on' }}"></i>
+                                        {{ 'Deactivate' if not athlete.is_archived else 'Activate' }}
                                     </button>
                                 </form>
                             </td>
