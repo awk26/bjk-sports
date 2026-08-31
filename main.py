@@ -61,7 +61,7 @@ def create_app():
             f"style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
             f"img-src 'self' data: blob: https://cdnjs.cloudflare.com; "
             f"font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; "
-            f"connect-src 'self' https://api.anthropic.com https://accounts.google.com https://oauth2.googleapis.com; "
+            f"connect-src 'self' https://cdnjs.cloudflare.com https://api.anthropic.com https://accounts.google.com https://oauth2.googleapis.com; "
             f"frame-ancestors 'self'; form-action 'self'; object-src 'self' blob:; "
             f"frame-src 'self' blob:; base-uri 'self';"
         )
