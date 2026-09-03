@@ -3,31 +3,27 @@
 {% block page_content %}
 <div class="container-fluid py-4 px-4">
     <div class="row justify-content-center">
-        <div class="col-md-6">
+        <div class="col-lg-8">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h4 class="fw-bold mb-1">{{ 'Edit Athlete' if athlete else 'Add Athlete' }}</h4>
-                    <p class="text-muted small mb-0">{{ 'Update athlete details' if athlete else 'Register a new athlete and assign a coach' }}</p>
+                    <p class="text-muted small mb-0">{{ 'Update complete athlete profile' if athlete else 'Register a new athlete with physical, parent, address & sporting background' }}</p>
                 </div>
                 <a href="{{ url_for('superadmin.superadmin_athletes') }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
                     <i class="bi bi-arrow-left me-1"></i> Back
                 </a>
             </div>
 
-    {{ flashed() }}
+            {{ flashed() }}
 
             <div class="card border-0 shadow-sm rounded-4">
                 <div class="card-body p-4">
                     <form method="POST">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <!-- Login Credentials -->
+
+                        <!-- Section: Login Credentials -->
+                        <h6 class="fw-bold text-primary mb-3"><i class="bi bi-key me-1"></i> Login Credentials</h6>
                         <div class="mb-3">
-                            <label class="form-label small fw-medium">
-                                <i class="bi bi-key me-1 text-primary"></i> Login Credentials
-                                {% if not athlete %}
-                                <span class="text-danger">*</span>
-                                {% endif %}
-                            </label>
                             {% if login_info and login_info.user_id %}
                             <div class="alert alert-success py-2 small mb-2">
                                 <i class="bi bi-person-check me-1"></i>
@@ -39,7 +35,7 @@
                             </div>
                             {% else %}
                             <div class="form-text mb-2">
-                                Create a username &amp; password so this athlete can log in and view their dashboard. {% if not athlete %}Username and password are required.{% else %}Leave blank if not granting access.{% endif %}
+                                Create a username &amp; password for athlete dashboard login. {% if not athlete %}Username and password are required.{% else %}Leave blank if not granting access.{% endif %}
                             </div>
                             <div class="row g-2">
                                 <div class="col-sm-6">
@@ -51,10 +47,11 @@
                             </div>
                             {% endif %}
                         </div>
-                        <hr class="my-3">
 
+                        <!-- Section: Basic & Personal Details -->
+                        <h6 class="fw-bold text-primary mb-3 mt-4"><i class="bi bi-person me-1"></i> Basic & Personal Details</h6>
                         <div class="mb-3">
-                            <label class="form-label small fw-medium">Name</label>
+                            <label class="form-label small fw-medium">Name *</label>
                             <div class="row g-2">
                                 <div class="col-md-4">
                                     <input type="text" class="form-control" name="first_name" placeholder="First Name" value="{{ athlete.first_name if athlete else '' }}" required>
@@ -67,47 +64,165 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label small fw-medium">Assigned Coach</label>
-                            <select class="form-select" name="coach_id" id="coachSelect" required>
-                                <option value="" disabled {{ 'selected' if not athlete }}>Select a coach</option>
-                                {% for coach_id, name in coaches %}
-                                <option value="{{ coach_id }}" {{ 'selected' if athlete and athlete.coach_id == coach_id }}>{{ name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label small fw-medium">Email</label>
-                            <input type="email" class="form-control" name="email" value="{{ athlete.email if athlete else '' }}">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label small fw-medium">Phone</label>
-                            <div class="input-group">
-                                <span class="input-group-text">+91</span>
-                                <input type="tel" class="form-control" name="phone" value="{{ athlete.phone if athlete else '' }}" placeholder="10-digit mobile number" maxlength="10" pattern="[0-9]{10}">
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label small fw-medium">Email</label>
+                                <input type="email" class="form-control" name="email" value="{{ athlete.email if athlete else '' }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-medium">Phone</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">+91</span>
+                                    <input type="tel" class="form-control" name="phone" value="{{ athlete.phone if athlete else '' }}" placeholder="10-digit mobile number" maxlength="10" pattern="[0-9]{10}">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-medium">Date of Birth</label>
+                                <input type="text" class="form-control" id="dobDisplay" placeholder="DD/MM/YYYY" inputmode="numeric" maxlength="10" autocomplete="off">
+                                <input type="hidden" name="dob" id="dobIso" value="{{ athlete.dob if athlete else '' }}">
                             </div>
                         </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label small fw-medium">Gender</label>
+                                <select name="gender" class="form-select">
+                                    <option value="">Select Gender</option>
+                                    <option value="Male" {{ 'selected' if athlete and athlete.gender == 'Male' }}>Male</option>
+                                    <option value="Female" {{ 'selected' if athlete and athlete.gender == 'Female' }}>Female</option>
+                                    <option value="Other" {{ 'selected' if athlete and athlete.gender == 'Other' }}>Other</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-medium">Blood Group</label>
+                                <select name="blood_group" class="form-select">
+                                    <option value="">Select Blood Group</option>
+                                    {% for bg in ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] %}
+                                    <option value="{{ bg }}" {{ 'selected' if athlete and athlete.blood_group == bg }}>{{ bg }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-medium">Assigned Coach *</label>
+                                <select class="form-select" name="coach_id" id="coachSelect" required>
+                                    <option value="" disabled {{ 'selected' if not athlete }}>Select a coach</option>
+                                    {% for coach_id, name in coaches %}
+                                    <option value="{{ coach_id }}" {{ 'selected' if athlete and athlete.coach_id == coach_id }}>{{ name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-medium">Emergency Contact Name</label>
+                                <input type="text" class="form-control" name="emergency_contact_name" value="{{ athlete.emergency_contact_name if athlete else '' }}" placeholder="Guardian / relative name">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-medium">Emergency Contact Phone</label>
+                                <input type="text" class="form-control" name="emergency_contact_phone" value="{{ athlete.emergency_contact_phone if athlete else '' }}" placeholder="Mobile number">
+                            </div>
+                        </div>
+
+                        <!-- Section: Physical Parameters -->
+                        <h6 class="fw-bold text-primary mb-3 mt-4"><i class="bi bi-activity me-1"></i> Physical Parameters</h6>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-medium">Height (cm)</label>
+                                <input type="number" step="0.1" class="form-control" name="height" value="{{ athlete.height if athlete and athlete.height is not none else '' }}" placeholder="e.g. 175.5">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-medium">Weight (kg)</label>
+                                <input type="number" step="0.1" class="form-control" name="weight" value="{{ athlete.weight if athlete and athlete.weight is not none else '' }}" placeholder="e.g. 68.0">
+                            </div>
+                        </div>
+
+                        <!-- Section: Parent Details -->
+                        <h6 class="fw-bold text-primary mb-3 mt-4"><i class="bi bi-people me-1"></i> Parent Details</h6>
                         <div class="mb-3">
-                            <label class="form-label small fw-medium">Date of Birth</label>
-                            <input type="text" class="form-control" id="dobDisplay" placeholder="DD/MM/YYYY"
-                                   inputmode="numeric" maxlength="10" autocomplete="off">
-                            <input type="hidden" name="dob" id="dobIso" value="{{ athlete.dob if athlete else '' }}">
-                            <div class="form-text">Format: DD/MM/YYYY</div>
+                            <label class="form-label small fw-medium">Parent / Guardian Name</label>
+                            <input type="text" class="form-control" name="parent_name" value="{{ athlete.parent_name if athlete else '' }}" placeholder="Primary Parent / Guardian Name">
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-medium">Father's Name</label>
+                                <input type="text" class="form-control" name="father_name" value="{{ athlete.father_name if athlete else '' }}" placeholder="Father's Name">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-medium">Mother's Name</label>
+                                <input type="text" class="form-control" name="mother_name" value="{{ athlete.mother_name if athlete else '' }}" placeholder="Mother's Name">
+                            </div>
+                        </div>
+
+                        <!-- Section: Address Details -->
+                        <h6 class="fw-bold text-primary mb-3 mt-4"><i class="bi bi-geo-alt me-1"></i> Address Details</h6>
+                        <div class="mb-3">
+                            <label class="form-label small fw-medium">Address Line 1</label>
+                            <input type="text" class="form-control" name="address_line1" value="{{ athlete.address_line1 if athlete else '' }}" placeholder="House No, Street name">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-medium">Address Line 2</label>
+                            <input type="text" class="form-control" name="address_line2" value="{{ athlete.address_line2 if athlete else '' }}" placeholder="Area, Landmark">
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label small fw-medium">City</label>
+                                <input type="text" class="form-control" name="city" value="{{ athlete.city if athlete else '' }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-medium">State</label>
+                                <input type="text" class="form-control" name="state" value="{{ athlete.state if athlete else '' }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-medium">Postal Code</label>
+                                <input type="text" class="form-control" name="postal_code" value="{{ athlete.postal_code if athlete else '' }}">
+                            </div>
+                        </div>
+
+                        <!-- Section: Sporting Background -->
+                        <h6 class="fw-bold text-primary mb-3 mt-4"><i class="bi bi-trophy me-1"></i> Sporting Background</h6>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label small fw-medium">Experience (Years)</label>
+                                <input type="text" class="form-control" name="sporting_experience_years" value="{{ athlete.sporting_experience_years if athlete else '' }}" placeholder="e.g. 3 years">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-medium">Sport / Discipline</label>
+                                <input type="text" class="form-control" name="sport_discipline" value="{{ athlete.sport_discipline if athlete else '' }}" placeholder="e.g. Singles Badminton / 100m Sprint">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-medium">Level of Participation</label>
+                                <select name="level_of_participation" class="form-select">
+                                    <option value="">Select Level</option>
+                                    <option value="Beginner" {{ 'selected' if athlete and athlete.level_of_participation == 'Beginner' }}>Beginner</option>
+                                    <option value="District" {{ 'selected' if athlete and athlete.level_of_participation == 'District' }}>District</option>
+                                    <option value="State" {{ 'selected' if athlete and athlete.level_of_participation == 'State' }}>State</option>
+                                    <option value="National" {{ 'selected' if athlete and athlete.level_of_participation == 'National' }}>National</option>
+                                    <option value="International" {{ 'selected' if athlete and athlete.level_of_participation == 'International' }}>International</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="mb-4">
-                            <label class="form-label small fw-medium">Sports</label>
+                            <label class="form-label small fw-medium">Previous Achievements & Sporting History</label>
+                            <textarea class="form-control" name="previous_achievements" rows="3" placeholder="List key tournaments won, medals, rankings, or former academy background...">{{ athlete.previous_achievements if athlete else '' }}</textarea>
+                        </div>
+
+                        <!-- Section: Sports Assigned -->
+                        <div class="mb-4">
+                            <label class="form-label small fw-medium">Sports Assigned</label>
                             <div class="dropdown">
                                 <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start" type="button"
                                         id="sportsDropdownBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
                                     <span id="sportsDropdownLabel">Select a coach first</span>
                                 </button>
                                 <ul class="dropdown-menu w-100 p-2" id="sportsDropdownMenu" style="max-height: 240px; overflow-y: auto;" aria-labelledby="sportsDropdownBtn">
-                                    <!-- populated by JS based on selected coach -->
                                 </ul>
                             </div>
-                            <div class="form-text">Only sports the selected coach is assigned to are shown here.</div>
+                            <div class="form-text">Only sports assigned to the selected coach are available.</div>
                         </div>
-                        <div class="d-grid">
+
+                        <div class="d-grid mt-4">
                             <button type="submit" class="btn btn-primary rounded-pill py-2 fw-medium">
                                 <i class="bi bi-{{ 'check-lg' if athlete else 'person-plus' }} me-1"></i>
                                 {{ 'Update Athlete' if athlete else 'Add Athlete' }}
@@ -177,8 +292,6 @@
 })();
 
 (function () {
-    // Date of Birth: shown/typed as DD/MM/YYYY, submitted as the ISO
-    // YYYY-MM-DD the backend already expects -- see #dobIso below.
     var dobDisplay = document.getElementById('dobDisplay');
     var dobIso = document.getElementById('dobIso');
 

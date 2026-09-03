@@ -354,6 +354,7 @@
     .step-pill.error { background: #dc3545; color: #fff; }
     .rating-group.rating-invalid .rating-btn { border-color: #dc3545; }
     .rating-group.rating-invalid { outline: 1px solid #dc3545; border-radius: .375rem; }
+    .import-processing { opacity: .6; pointer-events: none; }
 </style>
 
 <script nonce="{{ csp_nonce() }}">
@@ -636,10 +637,29 @@
     var uploadUrl = "{{ url_for('coach.coach_assessment_import_upload', athlete_id=athlete.id) }}";
     var statusUrlTemplate = "{{ url_for('coach.coach_assessment_import_status', task_id='TASKID_PLACEHOLDER') }}";
 
+    var form = document.getElementById('assessmentForm');
+    var progressCard = document.getElementById('progressCard');
+    var formCard = form.querySelector('.card');
+    var stepPills = document.querySelectorAll('#stepNav .step-pill');
+
     function setStatus(text, cls) {
         importStatus.className = 'small mt-2 ' + (cls || 'text-muted');
         importStatus.textContent = text;
         importStatus.classList.remove('d-none');
+    }
+
+    // Locks the manual form while a file is uploading/processing, so the
+    // coach can't fill fields in by hand at the same time an import is
+    // about to overwrite them. Unlocked again once processing finishes,
+    // whether that's success, failure, or a timeout.
+    function setProcessingLock(locked) {
+        importFile.disabled = locked;
+        form.querySelectorAll('input, select, textarea, button').forEach(function (el) {
+            el.disabled = locked;
+        });
+        stepPills.forEach(function (p) { p.disabled = locked; });
+        if (formCard) formCard.classList.toggle('import-processing', locked);
+        if (progressCard) progressCard.classList.toggle('import-processing', locked);
     }
 
     function applyRating(field, value) {
@@ -683,15 +703,12 @@
     }
 
     function applyImportedData(data) {
-        var applied = 0, unmatched = [];
         Object.keys(data || {}).forEach(function (key) {
             // Recomputed from sessions_planned/attended below instead of trusted
             // as-is -- the import may use a different scale (e.g. 0-1 fraction)
             // than the 0-100 percentage this app calculates and stores.
             if (key === 'attendance_pct') return;
-            var result = applyField(key, data[key]);
-            if (result === 'ok') applied++;
-            if (result === 'unmatched') unmatched.push(key);
+            applyField(key, data[key]);
         });
 
         var planned = parseInt(document.getElementById('sessions_planned').value) || 0;
@@ -699,12 +716,7 @@
         var attDisplay = document.getElementById('attendance_pct_display');
         attDisplay.value = planned > 0 ? ((attended / planned) * 100).toFixed(1) + '%' : '';
 
-        var msg = 'Imported ' + applied + ' field' + (applied === 1 ? '' : 's') + '.';
-        if (unmatched.length) {
-            msg += ' Could not auto-match: ' + unmatched.join(', ') + ' — please set ' + (unmatched.length === 1 ? 'it' : 'them') + ' manually.';
-        }
-        msg += ' Please review every step before submitting, especially Talent Category and ratings.';
-        setStatus(msg, unmatched.length ? 'text-warning' : 'text-success');
+        importStatus.classList.add('d-none');
     }
 
     function poll(taskId, attempt) {
@@ -712,6 +724,7 @@
         if (attempt > 40) {
             setStatus('Import timed out. The file may still be processing on the server — try checking back or re-uploading.', 'text-danger');
             importBtn.disabled = false;
+            setProcessingLock(false);
             return;
         }
         fetch(statusUrlTemplate.replace('TASKID_PLACEHOLDER', taskId))
@@ -720,16 +733,19 @@
                 if (res.error) {
                     setStatus('Import failed: ' + res.error, 'text-danger');
                     importBtn.disabled = false;
+                    setProcessingLock(false);
                     return;
                 }
                 if (res.status === 'completed') {
                     setStatus('Processing complete — filling the form…', 'text-muted');
+                    setProcessingLock(false);
                     applyImportedData(res.data || {});
                     if (window.__enterAssessmentReviewMode) window.__enterAssessmentReviewMode();
                     importBtn.disabled = false;
                 } else if (res.status === 'failed' || res.status === 'error') {
                     setStatus('The document import service could not process this file. Please check it and try again.', 'text-danger');
                     importBtn.disabled = false;
+                    setProcessingLock(false);
                 } else {
                     setStatus('Processing (' + res.status + ')…', 'text-muted');
                     setTimeout(function () { poll(taskId, attempt + 1); }, 3000);
@@ -745,6 +761,7 @@
         if (!file) { setStatus('Choose a file first.', 'text-danger'); return; }
 
         importBtn.disabled = true;
+        setProcessingLock(true);
         setStatus('Uploading…', 'text-muted');
 
         var fd = new FormData();
@@ -760,6 +777,7 @@
                 if (res.error) {
                     setStatus('Upload failed: ' + res.error, 'text-danger');
                     importBtn.disabled = false;
+                    setProcessingLock(false);
                     return;
                 }
                 setStatus('Queued for processing…', 'text-muted');
@@ -768,6 +786,7 @@
             .catch(function () {
                 setStatus('Could not upload the file. Check your connection and try again.', 'text-danger');
                 importBtn.disabled = false;
+                setProcessingLock(false);
             });
     });
 })();

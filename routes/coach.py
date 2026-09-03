@@ -13,6 +13,7 @@ from common.models import (
     get_squad_performance_dashboard, get_athlete_recommendations,
     get_coach_sports, get_athlete_sports, set_athlete_sports,
     get_athlete_login_info, set_athlete_login, get_user_by_username, update_user_password,
+    send_assessment_email,
 )
 
 bp = Blueprint("coach", __name__)
@@ -58,7 +59,67 @@ def coach_panel():
 @login_required
 @role_required("coach")
 def coach_athletes():
-    return render_template("coach_athletes.html", athletes=_my_athletes())
+    athletes = _my_athletes()
+    q = (request.args.get("q") or "").strip().lower()
+    status_filter = (request.args.get("status") or "all").lower()
+    sport_filter = (request.args.get("sport") or "").strip()
+    sort = (request.args.get("sort") or "id").lower()
+    direction = (request.args.get("dir") or "asc").lower()
+
+    if direction not in {"asc", "desc"}:
+        direction = "asc"
+
+    valid_sort = {"id": "id", "name": "name", "email": "email",
+                  "phone": "phone", "sport": "sport", "status": "is_archived"}
+    sort = valid_sort.get(sort, "id")
+
+    def matches_filters(athlete):
+        if q:
+            haystack = " ".join(
+                str(athlete.get(field) or "") for field in ("id", "name", "email", "phone", "sport")
+            ).lower()
+            if q not in haystack:
+                return False
+
+        if status_filter == "active" and athlete.get("is_archived"):
+            return False
+        if status_filter == "inactive" and not athlete.get("is_archived"):
+            return False
+
+        if sport_filter and (athlete.get("sport") or "").lower() != sport_filter.lower():
+            return False
+
+        return True
+
+    filtered_athletes = [athlete for athlete in athletes if matches_filters(athlete)]
+
+    def sort_value(athlete):
+        if sort == "status":
+            return bool(athlete.get("is_archived"))
+        value = athlete.get(sort)
+        if sort == "id":
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                return 0
+        if value is None:
+            return ""
+        return str(value).lower()
+
+    filtered_athletes.sort(key=sort_value, reverse=(direction == "desc"))
+
+    sports = sorted({(athlete.get("sport") or "").strip() for athlete in athletes if athlete.get("sport")}, key=str.lower)
+
+    return render_template(
+        "coach_athletes.html",
+        athletes=filtered_athletes,
+        filter_query=q,
+        filter_status=status_filter,
+        filter_sport=sport_filter,
+        sort=sort,
+        dir=direction,
+        sports=sports,
+    )
 
 
 @bp.route("/coach/athletes/create", methods=["GET", "POST"])
@@ -92,11 +153,64 @@ def coach_athlete_create():
         elif login_username and get_user_by_username(login_username):
             flash("That login username is already taken.", "danger")
         else:
+            height = request.form.get('height') or None
+            weight = request.form.get('weight') or None
+            parent_name = request.form.get('parent_name') or None
+            father_name = request.form.get('father_name') or None
+            mother_name = request.form.get('mother_name') or None
+            address_line1 = request.form.get('address_line1') or None
+            address_line2 = request.form.get('address_line2') or None
+            city = request.form.get('city') or None
+            state = request.form.get('state') or None
+            postal_code = request.form.get('postal_code') or None
+            gender = request.form.get('gender') or None
+            blood_group = request.form.get('blood_group') or None
+            emergency_contact_name = request.form.get('emergency_contact_name') or None
+            emergency_contact_phone = request.form.get('emergency_contact_phone') or None
+            sporting_experience_years = request.form.get('sporting_experience_years') or None
+            sport_discipline = request.form.get('sport_discipline') or None
+            level_of_participation = request.form.get('level_of_participation') or None
+            previous_achievements = request.form.get('previous_achievements') or None
+            nationality = request.form.get('nationality') or None
+            id_proof_type = request.form.get('id_proof_type') or None
+            id_proof_number = request.form.get('id_proof_number') or None
+            school_name = request.form.get('school_name') or None
+            school_grade = request.form.get('school_grade') or None
+            admission_date = request.form.get('admission_date') or None
+            medical_notes = request.form.get('medical_notes') or None
+
+            physical_params = {}
+            if height:
+                try:
+                    physical_params['height'] = float(height)
+                except Exception:
+                    pass
+            if weight:
+                try:
+                    physical_params['weight'] = float(weight)
+                except Exception:
+                    pass
+
             athlete_id = create_athlete(
                 first_name, middle_name, last_name,
                 email, phone, dob, sport_text,
                 _coach_id(), created_by=session["user"]["id"],
-                username=login_username or None, password=login_password or None)
+                username=login_username or None,
+                password=login_password or None,
+                height=(float(height) if height else None),
+                weight=(float(weight) if weight else None),
+                parent_name=parent_name, father_name=father_name, mother_name=mother_name,
+                address_line1=address_line1, address_line2=address_line2, city=city,
+                state=state, postal_code=postal_code,
+                physical_params=physical_params or None,
+                gender=gender, blood_group=blood_group,
+                emergency_contact_name=emergency_contact_name, emergency_contact_phone=emergency_contact_phone,
+                sporting_experience_years=sporting_experience_years, sport_discipline=sport_discipline,
+                level_of_participation=level_of_participation, previous_achievements=previous_achievements,
+                nationality=nationality, id_proof_type=id_proof_type, id_proof_number=id_proof_number,
+                school_name=school_name, school_grade=school_grade, admission_date=admission_date or None,
+                medical_notes=medical_notes,
+            )
             set_athlete_sports(athlete_id, sport_ids)
             log_audit(session["user"]["username"], "coach", "CREATE_ATHLETE",
                       target_type="ATHLETE", target_id=athlete_id)
@@ -134,6 +248,33 @@ def coach_athlete_edit(athlete_id):
         sport_ids = [int(x) for x in request.form.getlist("sport_ids")
                      if x.isdigit() and int(x) in my_sport_ids]
         sport_text = ", ".join(s["name"] for s in my_sports if s["id"] in sport_ids)
+
+        height = request.form.get('height') or None
+        weight = request.form.get('weight') or None
+        parent_name = request.form.get('parent_name') or None
+        father_name = request.form.get('father_name') or None
+        mother_name = request.form.get('mother_name') or None
+        address_line1 = request.form.get('address_line1') or None
+        address_line2 = request.form.get('address_line2') or None
+        city = request.form.get('city') or None
+        state = request.form.get('state') or None
+        postal_code = request.form.get('postal_code') or None
+        gender = request.form.get('gender') or None
+        blood_group = request.form.get('blood_group') or None
+        emergency_contact_name = request.form.get('emergency_contact_name') or None
+        emergency_contact_phone = request.form.get('emergency_contact_phone') or None
+        sporting_experience_years = request.form.get('sporting_experience_years') or None
+        sport_discipline = request.form.get('sport_discipline') or None
+        level_of_participation = request.form.get('level_of_participation') or None
+        previous_achievements = request.form.get('previous_achievements') or None
+        nationality = request.form.get('nationality') or None
+        id_proof_type = request.form.get('id_proof_type') or None
+        id_proof_number = request.form.get('id_proof_number') or None
+        school_name = request.form.get('school_name') or None
+        school_grade = request.form.get('school_grade') or None
+        admission_date = request.form.get('admission_date') or None
+        medical_notes = request.form.get('medical_notes') or None
+
         login_password = request.form.get("login_password", "")
         login_username = request.form.get("login_username", "").strip()
 
@@ -143,7 +284,17 @@ def coach_athlete_edit(athlete_id):
             flash("That login username is already taken.", "danger")
         else:
             update_athlete(athlete_id, first_name, middle_name, last_name,
-                           email, phone, dob, sport_text, _coach_id())
+                           email, phone, dob, sport_text, _coach_id(),
+                           height=(float(height) if height else None), weight=(float(weight) if weight else None),
+                           parent_name=parent_name, father_name=father_name, mother_name=mother_name,
+                           address_line1=address_line1, address_line2=address_line2, city=city, state=state, postal_code=postal_code,
+                           gender=gender, blood_group=blood_group,
+                           emergency_contact_name=emergency_contact_name, emergency_contact_phone=emergency_contact_phone,
+                           sporting_experience_years=sporting_experience_years, sport_discipline=sport_discipline,
+                           level_of_participation=level_of_participation, previous_achievements=previous_achievements,
+                           nationality=nationality, id_proof_type=id_proof_type, id_proof_number=id_proof_number,
+                           school_name=school_name, school_grade=school_grade, admission_date=admission_date or None,
+                           medical_notes=medical_notes)
             set_athlete_sports(athlete_id, sport_ids)
 
             if login_info.get("user_id"):
@@ -358,6 +509,27 @@ def coach_assessment_view(assessment_id):
                             assessment_id=assessment_id)
 
 
+@bp.route("/coach/assessments/<int:assessment_id>/send-email", methods=["POST"])
+@login_required
+def coach_assessment_send_email(assessment_id):
+    recipient_email = request.form.get("recipient_email", "").strip()
+    if not recipient_email and request.is_json and request.json:
+        recipient_email = request.json.get("recipient_email", "").strip()
+
+    result = send_assessment_email(assessment_id, recipient_email or None)
+
+    if request.is_json:
+        return jsonify(result)
+
+    if result.get("success"):
+        flash(result.get("message", "Assessment email processed."), "success")
+    else:
+        flash(result.get("message", "Failed to send email."), "danger")
+
+    return redirect(request.referrer or url_for("coach.coach_assessment_view", assessment_id=assessment_id))
+
+
+
 @bp.route("/coach/assessments/<int:assessment_id>/archive", methods=["POST"])
 @login_required
 @role_required("coach")
@@ -456,3 +628,11 @@ def coach_athlete_recommendations(athlete_id):
 
     recs = get_athlete_recommendations(athlete_id, _coach_id())
     return jsonify(recs=recs)
+
+
+
+
+
+
+
+

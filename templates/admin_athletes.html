@@ -49,6 +49,9 @@
                                 {% endif %}
                             </td>
                             <td class="py-2">
+                                <a href="{{ url_for('admin.admin_athlete_assessments', athlete_id=athlete.id) }}" class="btn btn-outline-dark btn-sm rounded-pill px-3" title="View assessment history">
+                                    <i class="bi bi-clock-history"></i>
+                                </a>
                                 <a href="{{ url_for('admin.admin_athlete_edit', athlete_id=athlete.id) }}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
                                     <i class="bi bi-pencil"></i> Edit
                                 </a>

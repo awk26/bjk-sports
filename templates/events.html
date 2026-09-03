@@ -1,0 +1,282 @@
+{% extends "layout.html" %}
+{% block title %}Event Management & Opportunities{% endblock %}
+
+{% block page_content %}
+<div class="container-fluid py-4 px-4">
+    <!-- Header & Action Row -->
+    <div class="d-flex flex_column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h3 class="fw-bold mb-1 d-flex align-items-center gap-2">
+                <i class="bi bi-calendar-event text-primary"></i> Events & Competitions
+            </h3>
+            <p class="text-muted mb-0 small">View upcoming sports meets, tournaments, and events by participation level.</p>
+        </div>
+
+        {% if can_manage %}
+        <button type="button" class="btn btn-primary rounded-pill px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#addEventModal">
+            <i class="bi bi-plus-lg me-1"></i> Add New Event
+        </button>
+        {% endif %}
+    </div>
+
+    {{ flashed() }}
+
+    <!-- Filter & Search Bar -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-3">
+            <form method="GET" action="{{ url_for('events.events_list') }}" class="row g-3 align-items-center">
+                <div class="col-md-6 col-lg-5">
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-0"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" name="q" class="form-control bg-light border-0" placeholder="Search events by name, location, description..." value="{{ search }}">
+                    </div>
+                </div>
+                <div class="col-md-4 col-lg-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="small text-muted mb-0 fw-medium">Level:</label>
+                        <select name="level" class="form-select bg-light border-0" onchange="this.form.submit()">
+                            <option value="all" {{ 'selected' if level_filter == 'all' }}>All Levels</option>
+                            <option value="District" {{ 'selected' if level_filter == 'District' }}>District</option>
+                            <option value="State" {{ 'selected' if level_filter == 'State' }}>State</option>
+                            <option value="National" {{ 'selected' if level_filter == 'National' }}>National</option>
+                            <option value="International" {{ 'selected' if level_filter == 'International' }}>International</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-2 col-lg-3 text-md-end">
+                    <a href="{{ url_for('events.events_list') }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">Reset</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Event Nav Tabs -->
+    <ul class="nav nav-pills mb-4 gap-2" id="eventTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active rounded-pill px-4" id="upcoming-tab" data-bs-toggle="tab" data-bs-target="#upcoming" type="button" role="tab">
+                <i class="bi bi-rocket-takeoff me-1"></i> Upcoming Events ({{ upcoming_events|length }})
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link rounded-pill px-4" id="past-tab" data-bs-toggle="tab" data-bs-target="#past" type="button" role="tab">
+                <i class="bi bi-clock-history me-1"></i> Past Events ({{ past_events|length }})
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="eventTabsContent">
+        <!-- UPCOMING EVENTS TAB -->
+        <div class="tab-pane fade show active" id="upcoming" role="tabpanel">
+            {% if upcoming_events %}
+            <div class="row g-4">
+                {% for ev in upcoming_events %}
+                <div class="col-md-6 col-xl-4">
+                    <div class="card h-100 border-0 shadow-sm rounded-4 hover-lift position-relative overflow-hidden">
+                        <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-start">
+                            <div>
+                                {% if ev.level == 'District' %}
+                                <span class="badge bg-info-subtle text-info rounded-pill px-3 py-1 fw-semibold"><i class="bi bi-geo me-1"></i>District</span>
+                                {% elif ev.level == 'State' %}
+                                <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-1 fw-semibold"><i class="bi bi-building me-1"></i>State</span>
+                                {% elif ev.level == 'National' %}
+                                <span class="badge bg-warning-subtle text-warning rounded-pill px-3 py-1 fw-semibold"><i class="bi bi-flag me-1"></i>National</span>
+                                {% else %}
+                                <span class="badge bg-danger-subtle text-danger rounded-pill px-3 py-1 fw-semibold"><i class="bi bi-globe me-1"></i>International</span>
+                                {% endif %}
+                            </div>
+                            <span class="text-muted small fw-medium">
+                                <i class="bi bi-calendar3 me-1"></i>{{ ev.event_date }}
+                            </span>
+                        </div>
+
+                        <div class="card-body px-4 py-3">
+                            <h5 class="fw-bold mb-2 text-dark">{{ ev.event_name }}</h5>
+                            <p class="text-muted small mb-3 text-truncate-2">{{ ev.description or 'No additional details provided.' }}</p>
+
+                            <div class="d-flex align-items-center gap-2 text-muted small mb-1">
+                                <i class="bi bi-geo-alt text-danger"></i>
+                                <span class="fw-medium text-dark">{{ ev.location }}</span>
+                            </div>
+                            {% if ev.end_date %}
+                            <div class="d-flex align-items-center gap-2 text-muted small">
+                                <i class="bi bi-calendar-check text-success"></i>
+                                <span>Ends: {{ ev.end_date }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        {% if can_manage %}
+                        <div class="card-footer bg-light border-0 px-4 py-3 d-flex justify-content-between align-items-center">
+                            <span class="text-muted extra-small">By: {{ ev.created_by_name or 'Admin' }}</span>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#editModal{{ ev.id }}">
+                                    <i class="bi bi-pencil me-1"></i> Edit
+                                </button>
+                                <form method="POST" action="{{ url_for('events.delete_event', id=ev.id) }}" onsubmit="return confirm('Archive this event?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-2" title="Archive">
+                                        <i class="bi bi-archive"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- EDIT MODAL FOR EVENT -->
+                {% if can_manage %}
+                <div class="modal fade" id="editModal{{ ev.id }}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content rounded-4 border-0 shadow">
+                            <form method="POST" action="{{ url_for('events.edit_event', id=ev.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <div class="modal-header border-0 pb-0">
+                                    <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square text-primary me-2"></i>Edit Event</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body p-4">
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-medium">Event Name</label>
+                                        <input type="text" class="form-control" name="event_name" value="{{ ev.event_name }}" required>
+                                    </div>
+                                    <div class="row g-3 mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-medium">Event Level</label>
+                                            <select name="level" class="form-select" required>
+                                                <option value="District" {{ 'selected' if ev.level == 'District' }}>District</option>
+                                                <option value="State" {{ 'selected' if ev.level == 'State' }}>State</option>
+                                                <option value="National" {{ 'selected' if ev.level == 'National' }}>National</option>
+                                                <option value="International" {{ 'selected' if ev.level == 'International' }}>International</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-medium">Location</label>
+                                            <input type="text" class="form-control" name="location" value="{{ ev.location }}" required>
+                                        </div>
+                                    </div>
+                                    <div class="row g-3 mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-medium">Start Date</label>
+                                            <input type="date" class="form-control" name="event_date" value="{{ ev.event_date }}" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-medium">End Date (Optional)</label>
+                                            <input type="date" class="form-control" name="end_date" value="{{ ev.end_date or '' }}">
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-medium">Description</label>
+                                        <textarea class="form-control" name="description" rows="3">{{ ev.description or '' }}</textarea>
+                                    </div>
+                                </div>
+                                <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="submit" class="btn btn-primary rounded-pill px-4">Update Event</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="card border-0 shadow-sm rounded-4 text-center py-5">
+                <div class="card-body">
+                    <i class="bi bi-calendar-x display-4 text-muted"></i>
+                    <h5 class="fw-bold mt-3">No Upcoming Events Found</h5>
+                    <p class="text-muted small">Check back later or adjust your search filter.</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- PAST EVENTS TAB -->
+        <div class="tab-pane fade" id="past" role="tabpanel">
+            {% if past_events %}
+            <div class="row g-4">
+                {% for ev in past_events %}
+                <div class="col-md-6 col-xl-4">
+                    <div class="card h-100 border-0 shadow-sm rounded-4 opacity-75">
+                        <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0 d-flex justify-content-between">
+                            <span class="badge bg-secondary rounded-pill px-3 py-1">{{ ev.level }}</span>
+                            <span class="text-muted small"><i class="bi bi-calendar-check me-1"></i>{{ ev.event_date }}</span>
+                        </div>
+                        <div class="card-body px-4 py-3">
+                            <h5 class="fw-bold mb-2">{{ ev.event_name }}</h5>
+                            <p class="text-muted small mb-2">{{ ev.description or 'Completed event.' }}</p>
+                            <div class="text-muted small"><i class="bi bi-geo-alt me-1"></i>{{ ev.location }}</div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="card border-0 shadow-sm rounded-4 text-center py-5">
+                <div class="card-body">
+                    <i class="bi bi-clock-history display-4 text-muted"></i>
+                    <h5 class="fw-bold mt-3">No Past Events</h5>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ADD NEW EVENT MODAL -->
+{% if can_manage %}
+<div class="modal fade" id="addEventModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <form method="POST" action="{{ url_for('events.add_event') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle text-primary me-2"></i>Create New Event</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label small fw-medium">Event Name *</label>
+                        <input type="text" class="form-control" name="event_name" placeholder="e.g. State Badminton Tournament" required>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-medium">Event Level *</label>
+                            <select name="level" class="form-select" required>
+                                <option value="District">District</option>
+                                <option value="State">State</option>
+                                <option value="National">National</option>
+                                <option value="International">International</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-medium">Location / Venue *</label>
+                            <input type="text" class="form-control" name="location" placeholder="City / Stadium" required>
+                        </div>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-medium">Start Date *</label>
+                            <input type="date" class="form-control" name="event_date" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-medium">End Date (Optional)</label>
+                            <input type="date" class="form-control" name="end_date">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-medium">Event Description</label>
+                        <textarea class="form-control" name="description" rows="3" placeholder="Overview of event, age eligibility, registration details..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Save & Publish Event</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

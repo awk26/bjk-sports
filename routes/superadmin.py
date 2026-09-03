@@ -10,6 +10,7 @@ from common.models import (
     list_sports, get_sport_by_id, get_sport_by_name, create_sport, update_sport, archive_sport,
     get_coach_sports, set_coach_sports, get_athlete_sports, set_athlete_sports,
     get_athlete_login_info, set_athlete_login,
+    list_assessments, get_assessment_by_id, get_coach_analytics,
     log_audit,
 )
 
@@ -456,3 +457,43 @@ def superadmin_sport_archive(sport_id):
     status = "deactivated" if new_status else "activated"
     flash(f"Sport '{sport['name']}' has been {status}.", "success")
     return redirect(url_for("superadmin.superadmin_sports"))
+
+
+# --------------------------------------------------------------------
+# Assessment & Analytics View-Only Access for Superadmin
+# --------------------------------------------------------------------
+
+@bp.route("/assessments")
+@login_required
+@role_required("superadmin")
+def superadmin_assessments():
+    assessments = list_assessments(is_archived=False)
+    return render_template("coach_assessment_history.html", assessments=assessments, read_only=True)
+
+
+@bp.route("/assessments/<int:id>")
+@login_required
+@role_required("superadmin")
+def superadmin_assessment_view(id):
+    assessment = get_assessment_by_id(id)
+    if not assessment:
+        flash("Assessment not found.", "danger")
+        return redirect(url_for("superadmin.superadmin_assessments"))
+    return render_template("coach_assessment_view.html", assessment=assessment, read_only=True)
+
+
+@bp.route("/analytics")
+@login_required
+@role_required("superadmin")
+def superadmin_analytics():
+    coaches = list_coaches(is_archived=False)
+    selected_coach_id = request.args.get("coach_id", type=int)
+    sports = list_sports(is_archived=False)
+    athletes = list_athletes(is_archived=False)
+    analytics = None
+    if selected_coach_id:
+        analytics = get_coach_analytics(selected_coach_id)
+    elif coaches:
+        analytics = get_coach_analytics(coaches[0]["id"])
+    return render_template("coach_analytics.html", analytics=analytics, coaches=coaches, sports=sports, athletes=athletes, read_only=True)
+

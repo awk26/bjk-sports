@@ -34,6 +34,14 @@
                class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('superadmin.superadmin_sport') }}">
                 <i class="bi bi-trophy"></i><span class="nav-text">Sports Master</span>
             </a>
+            <a href="{{ url_for('superadmin.superadmin_assessments') }}"
+               class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('superadmin.superadmin_assessment') }}">
+                <i class="bi bi-clipboard-check"></i><span class="nav-text">Assessments</span>
+            </a>
+            <a href="{{ url_for('superadmin.superadmin_analytics') }}"
+               class="nav-link {{ 'active' if request.endpoint == 'superadmin.superadmin_analytics' }}">
+                <i class="bi bi-bar-chart-line"></i><span class="nav-text">Analytics</span>
+            </a>
 
             {% elif session.user.role == 'admin' %}
             <div class="nav-section">Admin</div>
@@ -68,6 +76,12 @@
                 <i class="bi bi-person-badge"></i><span class="nav-text">My Profile</span>
             </a>
             {% endif %}
+
+            <div class="nav-section">Events</div>
+            <a href="{{ url_for('events.events_list') }}"
+               class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('events.') }}">
+                <i class="bi bi-calendar-event"></i><span class="nav-text">Events Page</span>
+            </a>
         </nav>
 
         <div class="sidebar-footer">

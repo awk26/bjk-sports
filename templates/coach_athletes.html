@@ -22,12 +22,36 @@
                 <table class="table align-middle mb-0 small">
                     <thead class="table-light">
                         <tr>
-                            <th class="py-2">ID</th>
-                            <th class="py-2">Name</th>
-                            <th class="py-2">Email</th>
-                            <th class="py-2">Phone</th>
-                            <th class="py-2">Sport</th>
-                            <th class="py-2">Status</th>
+                            <th class="py-2">
+                                <a href="{{ url_for('coach.coach_athletes', q=filter_query, status=filter_status, sport=filter_sport, sort='id', dir='desc' if sort == 'id' and dir == 'asc' else 'asc') }}" class="text-dark text-decoration-none fw-semibold">
+                                   ID {% if sort == 'id' %}<i class="bi bi-arrow-{{ 'down' if dir == 'asc' else 'up' }}"></i>{% endif %}
+                                </a>
+                            </th>
+                            <th class="py-2">
+                                <a href="{{ url_for('coach.coach_athletes', q=filter_query, status=filter_status, sport=filter_sport, sort='name', dir='desc' if sort == 'name' and dir == 'asc' else 'asc') }}" class="text-dark text-decoration-none fw-semibold">
+                                   Name {% if sort == 'name' %}<i class="bi bi-arrow-{{ 'down' if dir == 'asc' else 'up' }}"></i>{% endif %}
+                                </a>
+                            </th>
+                            <th class="py-2">
+                                <a href="{{ url_for('coach.coach_athletes', q=filter_query, status=filter_status, sport=filter_sport, sort='email', dir='desc' if sort == 'email' and dir == 'asc' else 'asc') }}" class="text-dark text-decoration-none fw-semibold">
+                                   Email {% if sort == 'email' %}<i class="bi bi-arrow-{{ 'down' if dir == 'asc' else 'up' }}"></i>{% endif %}
+                                </a>
+                            </th>
+                            <th class="py-2">
+                                <a href="{{ url_for('coach.coach_athletes', q=filter_query, status=filter_status, sport=filter_sport, sort='phone', dir='desc' if sort == 'phone' and dir == 'asc' else 'asc') }}" class="text-dark text-decoration-none fw-semibold">
+                                   Phone {% if sort == 'phone' %}<i class="bi bi-arrow-{{ 'down' if dir == 'asc' else 'up' }}"></i>{% endif %}
+                                </a>
+                            </th>
+                            <th class="py-2">
+                                <a href="{{ url_for('coach.coach_athletes', q=filter_query, status=filter_status, sport=filter_sport, sort='sport', dir='desc' if sort == 'sport' and dir == 'asc' else 'asc') }}" class="text-dark text-decoration-none fw-semibold">
+                                   Sport {% if sort == 'sport' %}<i class="bi bi-arrow-{{ 'down' if dir == 'asc' else 'up' }}"></i>{% endif %}
+                                </a>
+                            </th>
+                            <th class="py-2">
+                                <a href="{{ url_for('coach.coach_athletes', q=filter_query, status=filter_status, sport=filter_sport, sort='status', dir='desc' if sort == 'status' and dir == 'asc' else 'asc') }}" class="text-dark text-decoration-none fw-semibold">
+                                   Status {% if sort == 'status' %}<i class="bi bi-arrow-{{ 'down' if dir == 'asc' else 'up' }}"></i>{% endif %}
+                                </a>
+                            </th>
                             <th class="py-2">Actions</th>
                         </tr>
                     </thead>
@@ -38,7 +62,7 @@
                             <td class="py-2">
                                 <a href="{{ url_for('coach.coach_analytics', athlete_id=athlete.id) }}"
                                    class="text-decoration-none fw-medium" title="View {{ athlete.name }}'s dashboard">
-                                    {{ athlete.name }}
+                                   {{ athlete.name }}
                                 </a>
                             </td>
                             <td class="py-2">{{ athlete.email or '-' }}</td>
@@ -46,27 +70,27 @@
                             <td class="py-2">{{ athlete.sport or '-' }}</td>
                             <td class="py-2">
                                 {% if athlete.is_archived %}
-                                    <span class="badge bg-secondary rounded-pill">Inactive</span>
+                                   <span class="badge bg-secondary rounded-pill">Inactive</span>
                                 {% else %}
-                                    <span class="badge bg-success rounded-pill">Active</span>
+                                   <span class="badge bg-success rounded-pill">Active</span>
                                 {% endif %}
                             </td>
                             <td class="py-2 text-nowrap">
                                 <a href="{{ url_for('coach.coach_assessment_new', athlete_id=athlete.id) }}" class="btn btn-outline-info btn-sm rounded-pill px-3">
-                                    <i class="bi bi-clipboard2-pulse"></i> Assess
+                                   <i class="bi bi-clipboard2-pulse"></i> Assess
                                 </a>
                                 <a href="{{ url_for('coach.coach_assessment_history', athlete_id=athlete.id) }}" class="btn btn-outline-dark btn-sm rounded-pill px-3">
-                                    <i class="bi bi-clock-history"></i>
+                                   <i class="bi bi-clock-history"></i>
                                 </a>
                                 <a href="{{ url_for('coach.coach_athlete_edit', athlete_id=athlete.id) }}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
-                                    <i class="bi bi-pencil"></i> Edit
+                                   <i class="bi bi-pencil"></i> Edit
                                 </a>
                                 <form method="POST" action="{{ url_for('coach.coach_athlete_archive', athlete_id=athlete.id) }}" class="d-inline">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="btn btn-outline-{{ 'success' if athlete.is_archived else 'secondary' }} btn-sm rounded-pill px-3">
-                                        <i class="bi bi-{{ 'toggle2-off' if not athlete.is_archived else 'toggle2-on' }}"></i>
-                                        {{ 'Deactivate' if not athlete.is_archived else 'Activate' }}
-                                    </button>
+                                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                   <button type="submit" class="btn btn-outline-{{ 'success' if athlete.is_archived else 'secondary' }} btn-sm rounded-pill px-3">
+                                       <i class="bi bi-{{ 'toggle2-off' if not athlete.is_archived else 'toggle2-on' }}"></i>
+                                       {{ 'Deactivate' if not athlete.is_archived else 'Activate' }}
+                                   </button>
                                 </form>
                             </td>
                         </tr>

@@ -10,7 +10,7 @@ from flask_wtf.csrf import CSRFProtect
 from common.config import Config
 from common.models import init_default_data
 from common.decorators import login_required
-from routes import auth, admin, coach, superadmin, athlete
+from routes import auth, admin, coach, superadmin, athlete, events
 from common.models import (
     get_coach_dashboard_stats,
     get_admin_dashboard_stats,
@@ -24,7 +24,7 @@ csrf = CSRFProtect()
 
 # Paths that should never be cached by the browser (VAPT: "Re-examine
 # Cache-control Directives" -- login page and all authenticated areas).
-_NO_CACHE_PREFIXES = ("/login", "/dashboard", "/coach/", "/admin/", "/superadmin/")
+_NO_CACHE_PREFIXES = ("/login", "/dashboard", "/coach/", "/admin/", "/superadmin/", "/events/")
 
 
 def create_app():
@@ -38,6 +38,7 @@ def create_app():
     app.register_blueprint(coach.bp)
     app.register_blueprint(superadmin.bp)
     app.register_blueprint(athlete.bp)
+    app.register_blueprint(events.bp)
 
     init_default_data()
 
@@ -99,8 +100,7 @@ def create_app():
             admin_stats = get_admin_dashboard_stats()
         elif user["role"] == "superadmin":
             sa_stats = get_superadmin_dashboard_stats_with_extras()
-        return render_template("dashboard.html", user=user,
-                                coach_stats=coach_stats, admin_stats=admin_stats, sa_stats=sa_stats)
+        return render_template("dashboard.html", user=user,coach_stats=coach_stats, admin_stats=admin_stats, sa_stats=sa_stats)
     
     
     

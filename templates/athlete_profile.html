@@ -5,7 +5,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h4 class="fw-bold mb-1">My Profile</h4>
-            <p class="text-muted small mb-0">Your details on file</p>
+            <p class="text-muted small mb-0">Your complete athlete profile and physical parameters</p>
         </div>
         <a href="{{ url_for('athlete.athlete_dashboard') }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
             <i class="bi bi-speedometer2 me-1"></i> Dashboard
@@ -15,8 +15,8 @@
     {{ flashed() }}
 
     <div class="row g-4">
-        <div class="col-lg-7">
-            <div class="card border-0 shadow-sm rounded-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
                 <div class="card-body p-4">
                     <div class="d-flex align-items-center gap-3 mb-4">
                         <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center fw-bold"
@@ -28,43 +28,101 @@
                             <span class="badge {{ 'bg-secondary' if athlete.is_archived else 'bg-success' }} rounded-pill">
                                 {{ 'Inactive' if athlete.is_archived else 'Active' }}
                             </span>
+                            <span class="badge bg-info-subtle text-info rounded-pill ms-1">{{ athlete.athlete_code }}</span>
                         </div>
                     </div>
 
-                    <div class="row row-cols-1 row-cols-sm-2 g-3">
+                    <!-- Personal & Physical Overview -->
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-person me-1"></i> Personal & Physical Parameters</h6>
+                    <div class="row row-cols-1 row-cols-sm-3 g-3 mb-4">
                         <div class="col">
-                            <div class="small text-muted">First Name</div>
-                            <div class="fw-medium">{{ athlete.first_name or '-' }}</div>
+                            <div class="small text-muted">Height</div>
+                            <div class="fw-medium text-dark">{{ athlete.height if athlete.height is not none else '-' }} cm</div>
                         </div>
                         <div class="col">
-                            <div class="small text-muted">Middle Name</div>
-                            <div class="fw-medium">{{ athlete.middle_name or '-' }}</div>
+                            <div class="small text-muted">Weight</div>
+                            <div class="fw-medium text-dark">{{ athlete.weight if athlete.weight is not none else '-' }} kg</div>
                         </div>
                         <div class="col">
-                            <div class="small text-muted">Last Name</div>
-                            <div class="fw-medium">{{ athlete.last_name or '-' }}</div>
+                            <div class="small text-muted">Gender</div>
+                            <div class="fw-medium text-dark">{{ athlete.gender or '-' }}</div>
                         </div>
                         <div class="col">
-                            <div class="small text-muted">Email</div>
-                            <div class="fw-medium">{{ athlete.email or '-' }}</div>
-                        </div>
-                        <div class="col">
-                            <div class="small text-muted">Phone</div>
-                            <div class="fw-medium">{{ athlete.phone or '-' }}</div>
+                            <div class="small text-muted">Blood Group</div>
+                            <div class="fw-medium text-dark">{{ athlete.blood_group or '-' }}</div>
                         </div>
                         <div class="col">
                             <div class="small text-muted">Date of Birth</div>
-                            <div class="fw-medium">{{ athlete.dob or '-' }}</div>
+                            <div class="fw-medium text-dark">{{ athlete.dob or '-' }}</div>
                         </div>
                         <div class="col">
                             <div class="small text-muted">Assessments on File</div>
-                            <div class="fw-medium">{{ assessment_count }}</div>
+                            <div class="fw-medium text-dark">{{ assessment_count }}</div>
                         </div>
                     </div>
 
                     <hr class="my-4">
 
-                    <div class="small text-muted mb-2">Sports</div>
+                    <!-- Parent Details -->
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-people me-1"></i> Parent Details</h6>
+                    <div class="row row-cols-1 row-cols-sm-3 g-3 mb-4">
+                        <div class="col">
+                            <div class="small text-muted">Parent / Guardian</div>
+                            <div class="fw-medium text-dark">{{ athlete.parent_name or '-' }}</div>
+                        </div>
+                        <div class="col">
+                            <div class="small text-muted">Father's Name</div>
+                            <div class="fw-medium text-dark">{{ athlete.father_name or '-' }}</div>
+                        </div>
+                        <div class="col">
+                            <div class="small text-muted">Mother's Name</div>
+                            <div class="fw-medium text-dark">{{ athlete.mother_name or '-' }}</div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <!-- Address Details -->
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-geo-alt me-1"></i> Address Details</h6>
+                    <div class="row row-cols-1 row-cols-sm-2 g-3 mb-4">
+                        <div class="col-12">
+                            <div class="small text-muted">Residential Address</div>
+                            <div class="fw-medium text-dark">
+                                {{ athlete.address_line1 or '' }} {{ athlete.address_line2 or '' }}
+                                {% if athlete.city or athlete.state or athlete.postal_code %}
+                                <br><span class="text-muted small">{{ athlete.city or '' }}{{ ', ' if athlete.city and athlete.state }}{{ athlete.state or '' }} {{ athlete.postal_code or '' }}</span>
+                                {% endif %}
+                                {% if not athlete.address_line1 and not athlete.city %}-{% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <!-- Sporting Background -->
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-trophy me-1"></i> Sporting Background & History</h6>
+                    <div class="row row-cols-1 row-cols-sm-3 g-3 mb-3">
+                        <div class="col">
+                            <div class="small text-muted">Experience</div>
+                            <div class="fw-medium text-dark">{{ athlete.sporting_experience_years or '-' }}</div>
+                        </div>
+                        <div class="col">
+                            <div class="small text-muted">Discipline</div>
+                            <div class="fw-medium text-dark">{{ athlete.sport_discipline or '-' }}</div>
+                        </div>
+                        <div class="col">
+                            <div class="small text-muted">Participation Level</div>
+                            <div class="fw-medium text-dark">{{ athlete.level_of_participation or '-' }}</div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="small text-muted">Previous Achievements</div>
+                        <div class="fw-medium text-dark">{{ athlete.previous_achievements or 'No achievements listed.' }}</div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="small text-muted mb-2">Sports Assigned</div>
                     {% if sports %}
                     <div class="d-flex flex-wrap gap-2">
                         {% for s in sports %}
@@ -78,8 +136,9 @@
             </div>
         </div>
 
-        <div class="col-lg-5">
-            <div class="card border-0 shadow-sm rounded-4">
+        <div class="col-lg-4">
+            <!-- Coach Card -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
                 <div class="card-body p-4">
                     <h6 class="fw-bold mb-3"><i class="bi bi-person-workspace me-1 text-primary"></i> My Coach</h6>
                     {% if coach %}
@@ -98,6 +157,17 @@
                     {% else %}
                     <p class="text-muted small mb-0">No coach assigned yet.</p>
                     {% endif %}
+                </div>
+            </div>
+
+            <!-- Emergency Contact Card -->
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-telephone-outbound me-1 text-danger"></i> Emergency Contact</h6>
+                    <div class="small text-muted">Contact Name</div>
+                    <div class="fw-medium mb-2">{{ athlete.emergency_contact_name or '-' }}</div>
+                    <div class="small text-muted">Phone Number</div>
+                    <div class="fw-medium">{{ athlete.emergency_contact_phone or '-' }}</div>
                 </div>
             </div>
         </div>
