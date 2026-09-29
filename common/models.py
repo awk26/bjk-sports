@@ -214,6 +214,24 @@ def ensure_schema_extensions():
                 CONSTRAINT fk_events_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
             ) ENGINE=InnoDB
         """)
+
+        # Password-reset OTPs. The stored procedures this table is used
+        # through still come from common/password_reset_otp.sql -- this only
+        # makes sure the table itself is never the missing piece.
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS password_reset_otps (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                otp_hash VARCHAR(255) NOT NULL,
+                expires_at DATETIME NOT NULL,
+                attempts TINYINT NOT NULL DEFAULT 0,
+                used TINYINT(1) NOT NULL DEFAULT 0,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_reset_otp_user (user_id),
+                KEY idx_reset_otp_expires (expires_at),
+                CONSTRAINT fk_reset_otp_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
     except Exception:
         pass
 
@@ -665,6 +683,84 @@ def mark_reset_token_used(token: str):
 
 def purge_expired_reset_tokens():
     db.call_proc("sp_reset_token_delete_expired", ())
+
+
+# ---------------------------------------------------------------------------
+# Password reset via email OTP
+#
+# Requires common/password_reset_otp.sql to have been run (table +
+# sp_reset_otp_* / sp_user_get_by_email).
+# ---------------------------------------------------------------------------
+
+OTP_LENGTH = 6
+OTP_VALID_MINUTES = 10
+OTP_MAX_ATTEMPTS = 5
+
+
+def get_user_by_email(email: str) -> Optional[dict]:
+    """Look up a non-archived login by email address. Superadmin is never a
+    row in `users`, so it can't be found (or reset) here."""
+    if not email:
+        return None
+    rows = db.call_proc("sp_user_get_by_email", (email.strip(),))["rows"]
+    return rows[0] if rows else None
+
+
+def create_password_otp(user_id: int) -> Optional[str]:
+    """Issue a fresh numeric OTP for the user and return it in plain text so
+    it can be emailed. Only a hash of it is stored, so this return value is
+    the single chance to send it.
+
+    Any previously issued code for the user is invalidated first, so only
+    the newest one works. Returns None if the row could not be written --
+    callers must not claim an OTP was sent in that case.
+    """
+    otp = "".join(secrets.choice("0123456789") for _ in range(OTP_LENGTH))
+    expires_at = datetime.now() + timedelta(minutes=OTP_VALID_MINUTES)
+
+    db.call_proc("sp_reset_otp_invalidate_for_user", (user_id,))
+    result = db.call_proc(
+        "sp_reset_otp_create", (user_id, generate_password_hash(otp), expires_at, None))
+
+    out = result.get("out_params") or {}
+    # db.call_proc() swallows errors and returns empty, so treat a missing
+    # row id as failure rather than assuming the insert worked.
+    if not out.get("p3"):
+        return None
+    return otp
+
+
+def verify_password_otp(user_id: int, otp: str) -> tuple[bool, str]:
+    """Check a submitted OTP. Returns (ok, message).
+
+    On success the code is consumed, so it cannot be reused. On a wrong code
+    the attempt counter is incremented; once OTP_MAX_ATTEMPTS is reached the
+    code stops being active and a new one has to be requested.
+    """
+    otp = (otp or "").strip()
+    if not otp:
+        return False, "Enter the verification code from your email."
+
+    rows = db.call_proc("sp_reset_otp_get_active", (user_id, OTP_MAX_ATTEMPTS))["rows"]
+    if not rows:
+        # No active code: never issued, expired, already used, or out of
+        # attempts. Deliberately one message for all of those.
+        return False, "That code is no longer valid. Please request a new one."
+
+    record = rows[0]
+    if not check_password_hash(record["otp_hash"], otp):
+        db.call_proc("sp_reset_otp_bump_attempts", (record["id"],))
+        remaining = OTP_MAX_ATTEMPTS - (record["attempts"] + 1)
+        if remaining <= 0:
+            return False, "Too many incorrect attempts. Please request a new code."
+        return False, f"Incorrect code. {remaining} attempt(s) left."
+
+    db.call_proc("sp_reset_otp_mark_used", (record["id"],))
+    return True, "Code verified."
+
+
+def purge_expired_password_otps():
+    db.call_proc("sp_reset_otp_delete_expired", ())
 
 
 # ---------------------------------------------------------------------------

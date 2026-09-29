@@ -1,6 +1,9 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 
 from common.decorators import login_required, role_required
+from common.validators import (
+    missing_athlete_fields, missing_coach_fields, missing_fields_message,
+)
 from common.models import (
     list_coaches, get_user_by_username, get_coach_by_user_id,
     create_coach, update_coach, archive_coach,
@@ -81,8 +84,13 @@ def admin_coach_create():
         additional_info = request.form.get("additional_info") or None
         achievements = request.form.get("achievements") or None
 
-        if not username or not password or not name:
-            flash("Username, password, and name are required.", "danger")
+        missing = missing_coach_fields(request.form, sport_ids)
+        if not username:
+            missing.append("Username")
+        if not password:
+            missing.append("Password")
+        if missing:
+            flash(missing_fields_message(missing), "danger")
         elif get_user_by_username(username):
             flash("Username already exists.", "danger")
         else:
@@ -135,8 +143,9 @@ def admin_coach_edit(username):
         additional_info = request.form.get("additional_info") or None
         achievements = request.form.get("achievements") or None
 
-        if not name:
-            flash("Name is required.", "danger")
+        missing = missing_coach_fields(request.form, sport_ids)
+        if missing:
+            flash(missing_fields_message(missing), "danger")
         else:
             update_coach(coach["id"], user["id"], name, email, specialty, password or None,
                          gender=gender, dob=dob, phone=phone,
@@ -251,8 +260,11 @@ def admin_athlete_create():
         login_password = request.form.get("login_password", "")
 
         valid_coach_ids = {str(cid) for cid, _ in coach_choices}
-        if not first_name or not last_name or not coach_id:
-            flash("First name, last name, and coach are required.", "danger")
+        missing = missing_athlete_fields(request.form, sport_ids)
+        if not coach_id:
+            missing.append("Assigned coach")
+        if missing:
+            flash(missing_fields_message(missing), "danger")
         elif coach_id not in valid_coach_ids:
             flash("Selected coach is invalid.", "danger")
         elif not login_username or not login_password:
@@ -345,8 +357,11 @@ def admin_athlete_edit(athlete_id):
         login_password = request.form.get("login_password", "")
 
         valid_coach_ids = {str(cid) for cid, _ in coach_choices}
-        if not first_name or not last_name or not coach_id:
-            flash("First name, last name, and coach are required.", "danger")
+        missing = missing_athlete_fields(request.form, sport_ids)
+        if not coach_id:
+            missing.append("Assigned coach")
+        if missing:
+            flash(missing_fields_message(missing), "danger")
         elif coach_id not in valid_coach_ids:
             flash("Selected coach is invalid.", "danger")
         elif not login_info.get("user_id") and login_username and get_user_by_username(login_username):

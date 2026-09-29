@@ -25,11 +25,11 @@
                         <h6 class="fw-bold text-primary mb-3"><i class="bi bi-shield-lock me-1"></i> Account & Specialty</h6>
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
-                                <label class="form-label small fw-medium">Username *</label>
+                                <label class="form-label small fw-medium">Username <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" name="username" value="{{ coach.username if coach else '' }}" {{ 'readonly' if coach }} required>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label small fw-medium">{{ 'New Password' if coach else 'Password *' }}</label>
+                                <label class="form-label small fw-medium">{{ 'New Password' if coach else 'Password' }}{% if not coach %} <span class="text-danger">*</span>{% endif %}</label>
                                 <input type="password" class="form-control" name="password" placeholder="{{ 'Leave blank to keep current' if coach else '' }}" {{ 'required' if not coach }}>
                             </div>
                         </div>
@@ -37,7 +37,7 @@
                         <!-- Section: Personal Details -->
                         <h6 class="fw-bold text-primary mb-3 mt-4"><i class="bi bi-person me-1"></i> Personal Details</h6>
                         <div class="mb-3">
-                            <label class="form-label small fw-medium">Full Name *</label>
+                            <label class="form-label small fw-medium">Full Name <span class="text-danger">*</span></label>
                             <div class="row g-2">
                                 <div class="col-md-4">
                                     <input type="text" class="form-control" name="first_name" placeholder="First Name" value="{{ coach.first_name if coach else '' }}" required>
@@ -53,12 +53,12 @@
 
                         <div class="row g-3 mb-3">
                             <div class="col-md-4">
-                                <label class="form-label small fw-medium">Email</label>
-                                <input type="email" class="form-control" name="email" value="{{ coach.email if coach else '' }}">
+                                <label class="form-label small fw-medium">Email <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" name="email" value="{{ coach.email if coach else '' }}" required>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label small fw-medium">Phone</label>
-                                <input type="text" class="form-control" name="phone" placeholder="+91 9876543210" value="{{ coach.phone if coach else '' }}">
+                                <label class="form-label small fw-medium">Phone <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="phone" placeholder="+91 9876543210" value="{{ coach.phone if coach else '' }}" required>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label small fw-medium">Gender</label>
@@ -133,7 +133,7 @@
 
                         <!-- Section: Sports Assigned -->
                         <div class="mb-4">
-                            <label class="form-label small fw-medium">Sports Assigned</label>
+                            <label class="form-label small fw-medium">Sports Assigned <span class="text-danger">*</span></label>
                             <div class="dropdown">
                                 <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start" type="button"
                                         id="sportsDropdownBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">

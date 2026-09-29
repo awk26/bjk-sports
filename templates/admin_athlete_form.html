@@ -39,9 +39,11 @@
                             </div>
                             <div class="row g-2">
                                 <div class="col-sm-6">
+                                    <label class="form-label small text-muted mb-1">Username{% if not athlete %} <span class="text-danger">*</span>{% endif %}</label>
                                     <input type="text" class="form-control" name="login_username" placeholder="Username" autocomplete="off" {{ 'required' if not athlete else '' }}>
                                 </div>
                                 <div class="col-sm-6">
+                                    <label class="form-label small text-muted mb-1">Password{% if not athlete %} <span class="text-danger">*</span>{% endif %}</label>
                                     <input type="password" class="form-control" name="login_password" placeholder="Password" autocomplete="new-password" {{ 'required' if not athlete else '' }}>
                                 </div>
                             </div>
@@ -51,7 +53,7 @@
                         <!-- Section: Basic & Personal Details -->
                         <h6 class="fw-bold text-primary mb-3 mt-4"><i class="bi bi-person me-1"></i> Basic & Personal Details</h6>
                         <div class="mb-3">
-                            <label class="form-label small fw-medium">Name *</label>
+                            <label class="form-label small fw-medium">Name <span class="text-danger">*</span></label>
                             <div class="row g-2">
                                 <div class="col-md-4">
                                     <input type="text" class="form-control" name="first_name" placeholder="First Name" value="{{ athlete.first_name if athlete else '' }}" required>
@@ -67,27 +69,27 @@
 
                         <div class="row g-3 mb-3">
                             <div class="col-md-4">
-                                <label class="form-label small fw-medium">Email</label>
-                                <input type="email" class="form-control" name="email" value="{{ athlete.email if athlete else '' }}">
+                                <label class="form-label small fw-medium">Email <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" name="email" value="{{ athlete.email if athlete else '' }}" required>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label small fw-medium">Phone</label>
+                                <label class="form-label small fw-medium">Phone <span class="text-danger">*</span></label>
                                 <div class="input-group">
                                     <span class="input-group-text">+91</span>
-                                    <input type="tel" class="form-control" name="phone" value="{{ athlete.phone if athlete else '' }}" placeholder="10-digit mobile number" maxlength="10" pattern="[0-9]{10}">
+                                    <input type="tel" class="form-control" name="phone" value="{{ athlete.phone if athlete else '' }}" placeholder="10-digit mobile number" maxlength="10" pattern="[0-9]{10}" required>
                                 </div>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label small fw-medium">Date of Birth</label>
-                                <input type="text" class="form-control" id="dobDisplay" placeholder="DD/MM/YYYY" inputmode="numeric" maxlength="10" autocomplete="off">
+                                <label class="form-label small fw-medium">Date of Birth <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="dobDisplay" placeholder="DD/MM/YYYY" inputmode="numeric" maxlength="10" autocomplete="off" required>
                                 <input type="hidden" name="dob" id="dobIso" value="{{ athlete.dob if athlete else '' }}">
                             </div>
                         </div>
 
                         <div class="row g-3 mb-3">
                             <div class="col-md-4">
-                                <label class="form-label small fw-medium">Gender</label>
-                                <select name="gender" class="form-select">
+                                <label class="form-label small fw-medium">Gender <span class="text-danger">*</span></label>
+                                <select name="gender" class="form-select" required>
                                     <option value="">Select Gender</option>
                                     <option value="Male" {{ 'selected' if athlete and athlete.gender == 'Male' }}>Male</option>
                                     <option value="Female" {{ 'selected' if athlete and athlete.gender == 'Female' }}>Female</option>
@@ -95,8 +97,8 @@
                                 </select>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label small fw-medium">Blood Group</label>
-                                <select name="blood_group" class="form-select">
+                                <label class="form-label small fw-medium">Blood Group <span class="text-danger">*</span></label>
+                                <select name="blood_group" class="form-select" required>
                                     <option value="">Select Blood Group</option>
                                     {% for bg in ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] %}
                                     <option value="{{ bg }}" {{ 'selected' if athlete and athlete.blood_group == bg }}>{{ bg }}</option>
@@ -104,7 +106,7 @@
                                 </select>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label small fw-medium">Assigned Coach *</label>
+                                <label class="form-label small fw-medium">Assigned Coach <span class="text-danger">*</span></label>
                                 <select class="form-select" name="coach_id" id="coachSelect" required>
                                     <option value="" disabled {{ 'selected' if not athlete }}>Select a coach</option>
                                     {% for coach_id, name in coaches %}
@@ -116,12 +118,12 @@
 
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
-                                <label class="form-label small fw-medium">Emergency Contact Name</label>
-                                <input type="text" class="form-control" name="emergency_contact_name" value="{{ athlete.emergency_contact_name if athlete else '' }}" placeholder="Guardian / relative name">
+                                <label class="form-label small fw-medium">Emergency Contact Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="emergency_contact_name" value="{{ athlete.emergency_contact_name if athlete else '' }}" placeholder="Guardian / relative name" required>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label small fw-medium">Emergency Contact Phone</label>
-                                <input type="text" class="form-control" name="emergency_contact_phone" value="{{ athlete.emergency_contact_phone if athlete else '' }}" placeholder="Mobile number">
+                                <label class="form-label small fw-medium">Emergency Contact Phone <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="emergency_contact_phone" value="{{ athlete.emergency_contact_phone if athlete else '' }}" placeholder="Mobile number" required>
                             </div>
                         </div>
 
@@ -181,8 +183,8 @@
                         <!-- Section: Parent Details -->
                         <h6 class="fw-bold text-primary mb-3 mt-4"><i class="bi bi-people me-1"></i> Parent Details</h6>
                         <div class="mb-3">
-                            <label class="form-label small fw-medium">Parent / Guardian Name</label>
-                            <input type="text" class="form-control" name="parent_name" value="{{ athlete.parent_name if athlete else '' }}" placeholder="Primary Parent / Guardian Name">
+                            <label class="form-label small fw-medium">Parent / Guardian Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="parent_name" value="{{ athlete.parent_name if athlete else '' }}" placeholder="Primary Parent / Guardian Name" required>
                         </div>
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
@@ -250,7 +252,7 @@
 
                         <!-- Section: Sports Assigned -->
                         <div class="mb-4">
-                            <label class="form-label small fw-medium">Sports Assigned</label>
+                            <label class="form-label small fw-medium">Sports Assigned <span class="text-danger">*</span></label>
                             <div class="dropdown">
                                 <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start" type="button"
                                         id="sportsDropdownBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">

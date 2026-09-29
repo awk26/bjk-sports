@@ -1,9 +1,9 @@
 {% extends "layout.html" %}
 {% block title %}Athlete Assessment - {{ athlete.name }}{% endblock %}
 
-{% macro rating_group(field, label) %}
+{% macro rating_group(field, label, required=false) %}
 <div class="mb-3">
-    <label class="form-label small fw-medium d-block">{{ label }}</label>
+    <label class="form-label small fw-medium d-block">{{ label }}{% if required %} <span class="text-danger">*</span>{% endif %}</label>
     <input type="hidden" name="{{ field }}" id="{{ field }}" value="{{ assessment[field] or '' }}">
     <div class="btn-group rating-group" data-field="{{ field }}" id="{{ field }}_group" role="group">
         {% for n in range(1, 6) %}
@@ -156,27 +156,27 @@
                     <h6 class="fw-bold text-primary mb-3"><i class="bi bi-lightning-charge me-1"></i> 2. Physical Development</h6>
                     <div class="row">
                         <div class="col-md-6">
-                            {{ rating_group('speed_rating', 'Speed') }}
+                            {{ rating_group('speed_rating', 'Speed', required=true) }}
                             {{ remarks_field('speed_remarks', 'Speed Remarks') }}
                         </div>
                         <div class="col-md-6">
-                            {{ rating_group('agility_rating', 'Agility') }}
+                            {{ rating_group('agility_rating', 'Agility', required=true) }}
                             {{ remarks_field('agility_remarks', 'Agility Remarks') }}
                         </div>
                         <div class="col-md-6">
-                            {{ rating_group('balance_rating', 'Balance') }}
+                            {{ rating_group('balance_rating', 'Balance', required=true) }}
                             {{ remarks_field('balance_remarks', 'Balance Remarks') }}
                         </div>
                         <div class="col-md-6">
-                            {{ rating_group('coordination_rating', 'Coordination') }}
+                            {{ rating_group('coordination_rating', 'Coordination', required=true) }}
                             {{ remarks_field('coordination_remarks', 'Coordination Remarks') }}
                         </div>
                         <div class="col-md-6">
-                            {{ rating_group('strength_rating', 'Strength (age-appropriate)') }}
+                            {{ rating_group('strength_rating', 'Strength (age-appropriate)', required=true) }}
                             {{ remarks_field('strength_remarks', 'Strength Remarks') }}
                         </div>
                         <div class="col-md-6">
-                            {{ rating_group('endurance_rating', 'Endurance') }}
+                            {{ rating_group('endurance_rating', 'Endurance', required=true) }}
                             {{ remarks_field('endurance_remarks', 'Endurance Remarks') }}
                         </div>
                     </div>
@@ -187,15 +187,15 @@
                     <h6 class="fw-bold text-primary mb-3"><i class="bi bi-controller me-1"></i> 3. Sport-Specific Skill Assessment - Technical</h6>
                     <div class="row">
                         <div class="col-md-4">
-                            {{ rating_group('technique_rating', 'Basic Technique / Skill') }}
+                            {{ rating_group('technique_rating', 'Basic Technique / Skill', required=true) }}
                             {{ remarks_field('technique_remarks', 'Remarks') }}
                         </div>
                         <div class="col-md-4">
-                            {{ rating_group('control_accuracy_rating', 'Control & Accuracy') }}
+                            {{ rating_group('control_accuracy_rating', 'Control & Accuracy', required=true) }}
                             {{ remarks_field('control_accuracy_remarks', 'Remarks') }}
                         </div>
                         <div class="col-md-4">
-                            {{ rating_group('footwork_rating', 'Footwork & Movement') }}
+                            {{ rating_group('footwork_rating', 'Footwork & Movement', required=true) }}
                             {{ remarks_field('footwork_remarks', 'Remarks') }}
                         </div>
                     </div>
@@ -206,15 +206,15 @@
                     <h6 class="fw-bold text-primary mb-3"><i class="bi bi-diagram-3 me-1"></i> 4. Sport-Specific Skill Assessment - Tactical</h6>
                     <div class="row">
                         <div class="col-md-4">
-                            {{ rating_group('game_awareness_rating', 'Game Awareness') }}
+                            {{ rating_group('game_awareness_rating', 'Game Awareness', required=true) }}
                             {{ remarks_field('game_awareness_remarks', 'Remarks') }}
                         </div>
                         <div class="col-md-4">
-                            {{ rating_group('decision_making_rating', 'Decision Making') }}
+                            {{ rating_group('decision_making_rating', 'Decision Making', required=true) }}
                             {{ remarks_field('decision_making_remarks', 'Remarks') }}
                         </div>
                         <div class="col-md-4">
-                            {{ rating_group('follow_instructions_rating', 'Ability to Follow Instructions') }}
+                            {{ rating_group('follow_instructions_rating', 'Ability to Follow Instructions', required=true) }}
                             {{ remarks_field('follow_instructions_remarks', 'Remarks') }}
                         </div>
                     </div>
@@ -225,23 +225,23 @@
                     <h6 class="fw-bold text-primary mb-3"><i class="bi bi-emoji-smile me-1"></i> 5. Psychological & Behavioral Attributes</h6>
                     <div class="row">
                         <div class="col-md-6">
-                            {{ rating_group('discipline_rating', 'Discipline') }}
+                            {{ rating_group('discipline_rating', 'Discipline', required=true) }}
                             {{ remarks_field('discipline_remarks', 'Remarks') }}
                         </div>
                         <div class="col-md-6">
-                            {{ rating_group('effort_rating', 'Effort / Work Ethic') }}
+                            {{ rating_group('effort_rating', 'Effort / Work Ethic', required=true) }}
                             {{ remarks_field('effort_remarks', 'Remarks') }}
                         </div>
                         <div class="col-md-6">
-                            {{ rating_group('coachability_rating', 'Coachability') }}
+                            {{ rating_group('coachability_rating', 'Coachability', required=true) }}
                             {{ remarks_field('coachability_remarks', 'Remarks') }}
                         </div>
                         <div class="col-md-6">
-                            {{ rating_group('confidence_rating', 'Confidence') }}
+                            {{ rating_group('confidence_rating', 'Confidence', required=true) }}
                             {{ remarks_field('confidence_remarks', 'Remarks') }}
                         </div>
                         <div class="col-md-6">
-                            {{ rating_group('team_behaviour_rating', 'Team Behaviour / Respect') }}
+                            {{ rating_group('team_behaviour_rating', 'Team Behaviour / Respect', required=true) }}
                             {{ remarks_field('team_behaviour_remarks', 'Remarks') }}
                         </div>
                     </div>

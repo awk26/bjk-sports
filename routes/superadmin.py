@@ -1,6 +1,9 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 
 from common.decorators import login_required, role_required
+from common.validators import (
+    missing_athlete_fields, missing_coach_fields, missing_fields_message,
+)
 from common.models import (
     list_users, list_coaches, list_athletes, get_athlete_by_id,
     get_user_by_username, get_coach_by_user_id,
@@ -36,6 +39,32 @@ def _split_name(full_name):
         return parts[0], "", parts[1]
     else:
         return parts[0], " ".join(parts[1:-1]), parts[-1]
+
+
+def _collect_coach_profile(form) -> dict:
+    """The coach profile fields the form posts beyond username/name/email/specialty,
+    as create_coach()/update_coach() keyword arguments."""
+    fields = ["gender", "dob", "phone", "address_line1", "address_line2", "city",
+              "state", "postal_code", "education", "certifications",
+              "additional_info", "achievements"]
+    return {f: (form.get(f) or None) for f in fields}
+
+
+def _collect_athlete_profile(form) -> dict:
+    """Same idea for the athlete form -- everything create_athlete()/update_athlete()
+    takes beyond the name/email/phone/dob/sport/coach positional arguments."""
+    height = form.get("height") or None
+    weight = form.get("weight") or None
+    fields = ["parent_name", "father_name", "mother_name", "address_line1", "address_line2",
+              "city", "state", "postal_code", "gender", "blood_group",
+              "emergency_contact_name", "emergency_contact_phone", "sporting_experience_years",
+              "sport_discipline", "level_of_participation", "previous_achievements",
+              "nationality", "id_proof_type", "id_proof_number", "school_name",
+              "school_grade", "admission_date", "medical_notes"]
+    profile = {f: (form.get(f) or None) for f in fields}
+    profile["height"] = float(height) if height else None
+    profile["weight"] = float(weight) if weight else None
+    return profile
 
 
 # --------------------------------------------------------------------
@@ -163,13 +192,19 @@ def superadmin_coach_create():
         email = request.form.get("email", "").strip()
         specialty = request.form.get("specialty", "").strip()
         sport_ids = [int(x) for x in request.form.getlist("sport_ids") if x.isdigit()]
+        profile = _collect_coach_profile(request.form)
 
-        if not username or not password or not name:
-            flash("Username, password, and name are required.", "danger")
+        missing = missing_coach_fields(request.form, sport_ids)
+        if not username:
+            missing.append("Username")
+        if not password:
+            missing.append("Password")
+        if missing:
+            flash(missing_fields_message(missing), "danger")
         elif get_user_by_username(username):
             flash("Username already exists.", "danger")
         else:
-            coach_id = create_coach(username, password, name, email, specialty)
+            coach_id = create_coach(username, password, name, email, specialty, **profile)
             set_coach_sports(coach_id, sport_ids)
             log_audit("superadmin", "superadmin", "CREATE_COACH",
                       target_type="USER", details=f"username={username}")
@@ -198,11 +233,13 @@ def superadmin_coach_edit(username):
         specialty = request.form.get("specialty", "").strip()
         password = request.form.get("password", "")
         sport_ids = [int(x) for x in request.form.getlist("sport_ids") if x.isdigit()]
+        profile = _collect_coach_profile(request.form)
 
-        if not name:
-            flash("Name is required.", "danger")
+        missing = missing_coach_fields(request.form, sport_ids)
+        if missing:
+            flash(missing_fields_message(missing), "danger")
         else:
-            update_coach(coach["id"], user["id"], name, email, specialty, password or None)
+            update_coach(coach["id"], user["id"], name, email, specialty, password or None, **profile)
             set_coach_sports(coach["id"], sport_ids)
             log_audit("superadmin", "superadmin", "UPDATE_COACH",
                       target_type="USER", target_id=user["id"])
@@ -210,7 +247,7 @@ def superadmin_coach_edit(username):
             return redirect(url_for("superadmin.superadmin_coaches"))
 
     first, middle, last = _split_name(user["name"])
-    return render_template("superadmin_coach_form.html", coach={
+    coach_data = {
         "username": username,
         "name": user["name"],
         "first_name": first,
@@ -218,7 +255,11 @@ def superadmin_coach_edit(username):
         "last_name": last,
         "email": user["email"],
         "specialty": coach["specialty"] if coach else "",
-    }, all_sports=all_sports, selected_sport_ids=selected_sport_ids)
+    }
+    if coach:
+        coach_data.update(coach)
+    return render_template("superadmin_coach_form.html", coach=coach_data,
+                           all_sports=all_sports, selected_sport_ids=selected_sport_ids)
 
 
 @bp.route("/coaches/<username>/archive", methods=["POST"])
@@ -281,8 +322,11 @@ def superadmin_athlete_create():
         login_password = request.form.get("login_password", "")
 
         valid_coach_ids = {str(cid) for cid, _ in coach_choices}
-        if not first_name or not last_name or not coach_id:
-            flash("First name, last name, and coach are required.", "danger")
+        missing = missing_athlete_fields(request.form, sport_ids)
+        if not coach_id:
+            missing.append("Assigned coach")
+        if missing:
+            flash(missing_fields_message(missing), "danger")
         elif coach_id not in valid_coach_ids:
             flash("Selected coach is invalid.", "danger")
         elif not login_username or not login_password:
@@ -294,7 +338,8 @@ def superadmin_athlete_create():
             athlete_id = create_athlete(
                 first_name, middle_name, last_name,
                 email, phone, dob, sport_text, int(coach_id),
-                username=login_username or None, password=login_password or None)
+                username=login_username or None, password=login_password or None,
+                **_collect_athlete_profile(request.form))
             set_athlete_sports(athlete_id, sport_ids)
             log_audit("superadmin", "superadmin", "CREATE_ATHLETE",
                       target_type="ATHLETE", target_id=athlete_id)
@@ -337,8 +382,11 @@ def superadmin_athlete_edit(athlete_id):
         login_password = request.form.get("login_password", "")
 
         valid_coach_ids = {str(cid) for cid, _ in coach_choices}
-        if not first_name or not last_name or not coach_id:
-            flash("First name, last name, and coach are required.", "danger")
+        missing = missing_athlete_fields(request.form, sport_ids)
+        if not coach_id:
+            missing.append("Assigned coach")
+        if missing:
+            flash(missing_fields_message(missing), "danger")
         elif coach_id not in valid_coach_ids:
             flash("Selected coach is invalid.", "danger")
         elif not login_info.get("user_id") and login_username and get_user_by_username(login_username):
@@ -346,7 +394,8 @@ def superadmin_athlete_edit(athlete_id):
         else:
             full_name = " ".join(p for p in [first_name, middle_name, last_name] if p)
             update_athlete(athlete_id, first_name, middle_name, last_name,
-                           email, phone, dob, sport_text, int(coach_id))
+                           email, phone, dob, sport_text, int(coach_id),
+                           **_collect_athlete_profile(request.form))
             set_athlete_sports(athlete_id, sport_ids)
 
             if login_info.get("user_id"):

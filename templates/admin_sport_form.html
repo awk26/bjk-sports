@@ -21,7 +21,7 @@
                     <form method="POST">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="mb-4">
-                            <label class="form-label small fw-medium">Sport Name</label>
+                            <label class="form-label small fw-medium">Sport Name <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" name="name" value="{{ sport.name if sport else '' }}"
                                    placeholder="e.g. Basketball, Football, Swimming" required autofocus>
                         </div>

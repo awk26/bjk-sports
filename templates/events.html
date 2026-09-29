@@ -137,12 +137,12 @@
                                 </div>
                                 <div class="modal-body p-4">
                                     <div class="mb-3">
-                                        <label class="form-label small fw-medium">Event Name</label>
+                                        <label class="form-label small fw-medium">Event Name <span class="text-danger">*</span></label>
                                         <input type="text" class="form-control" name="event_name" value="{{ ev.event_name }}" required>
                                     </div>
                                     <div class="row g-3 mb-3">
                                         <div class="col-md-6">
-                                            <label class="form-label small fw-medium">Event Level</label>
+                                            <label class="form-label small fw-medium">Event Level <span class="text-danger">*</span></label>
                                             <select name="level" class="form-select" required>
                                                 <option value="District" {{ 'selected' if ev.level == 'District' }}>District</option>
                                                 <option value="State" {{ 'selected' if ev.level == 'State' }}>State</option>
@@ -151,13 +151,13 @@
                                             </select>
                                         </div>
                                         <div class="col-md-6">
-                                            <label class="form-label small fw-medium">Location</label>
+                                            <label class="form-label small fw-medium">Location <span class="text-danger">*</span></label>
                                             <input type="text" class="form-control" name="location" value="{{ ev.location }}" required>
                                         </div>
                                     </div>
                                     <div class="row g-3 mb-3">
                                         <div class="col-md-6">
-                                            <label class="form-label small fw-medium">Start Date</label>
+                                            <label class="form-label small fw-medium">Start Date <span class="text-danger">*</span></label>
                                             <input type="date" class="form-control" name="event_date" value="{{ ev.event_date }}" required>
                                         </div>
                                         <div class="col-md-6">
@@ -237,12 +237,12 @@
                 </div>
                 <div class="modal-body p-4">
                     <div class="mb-3">
-                        <label class="form-label small fw-medium">Event Name *</label>
+                        <label class="form-label small fw-medium">Event Name <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" name="event_name" placeholder="e.g. State Badminton Tournament" required>
                     </div>
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
-                            <label class="form-label small fw-medium">Event Level *</label>
+                            <label class="form-label small fw-medium">Event Level <span class="text-danger">*</span></label>
                             <select name="level" class="form-select" required>
                                 <option value="District">District</option>
                                 <option value="State">State</option>
@@ -251,13 +251,13 @@
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label small fw-medium">Location / Venue *</label>
+                            <label class="form-label small fw-medium">Location / Venue <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" name="location" placeholder="City / Stadium" required>
                         </div>
                     </div>
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
-                            <label class="form-label small fw-medium">Start Date *</label>
+                            <label class="form-label small fw-medium">Start Date <span class="text-danger">*</span></label>
                             <input type="date" class="form-control" name="event_date" required>
                         </div>
                         <div class="col-md-6">

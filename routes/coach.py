@@ -4,6 +4,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 
 from common.decorators import login_required, role_required
 from common.portall_client import upload_document, get_task_status, PortallError
+from common.validators import missing_athlete_fields, missing_fields_message
 from common.models import (
     list_athletes, get_athlete_by_id, create_athlete, update_athlete,
     archive_athlete, log_audit,
@@ -146,8 +147,9 @@ def coach_athlete_create():
         login_username = request.form.get("login_username", "").strip()
         login_password = request.form.get("login_password", "")
 
-        if not first_name or not last_name:
-            flash("First name and last name are required.", "danger")
+        missing = missing_athlete_fields(request.form, sport_ids)
+        if missing:
+            flash(missing_fields_message(missing), "danger")
         elif not login_username or not login_password:
             flash("Username and password are required.", "danger")
         elif login_username and get_user_by_username(login_username):
@@ -278,8 +280,9 @@ def coach_athlete_edit(athlete_id):
         login_password = request.form.get("login_password", "")
         login_username = request.form.get("login_username", "").strip()
 
-        if not first_name or not last_name:
-            flash("First name and last name are required.", "danger")
+        missing = missing_athlete_fields(request.form, sport_ids)
+        if missing:
+            flash(missing_fields_message(missing), "danger")
         elif not login_info.get("user_id") and login_username and get_user_by_username(login_username):
             flash("That login username is already taken.", "danger")
         else:

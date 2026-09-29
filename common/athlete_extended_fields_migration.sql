@@ -9,12 +9,16 @@
 -- can also be applied directly / reviewed / run against another
 -- environment ahead of a deploy.
 --
--- Run this once against bjk_athletes. Running it a second time will
--- error on "Duplicate column name" for any column already added --
--- that's expected, just means it's already applied.
+-- Run once, naming the target database on the command line. There is no
+-- "USE" statement here on purpose: hardcoding one (as the other .sql files
+-- in this repo do) points at the DEV database even when you mean prod.
+--
+--   dev :  mysql -h <host> -P <port> -u <user> -p bjk_athletes < common/athlete_extended_fields_migration.sql
+--   prod:  mysql -h <host> -P <port> -u <user> -p bjksports    < common/athlete_extended_fields_migration.sql
+--
+-- Running it a second time will error on "Duplicate column name" for any
+-- column already added -- that's expected, it just means it's applied.
 -- =====================================================================
-
-USE bjk_athletes;
 
 ALTER TABLE athletes ADD COLUMN nationality      VARCHAR(50)  NULL;
 ALTER TABLE athletes ADD COLUMN id_proof_type    VARCHAR(50)  NULL;

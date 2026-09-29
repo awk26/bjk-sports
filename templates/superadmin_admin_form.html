@@ -21,15 +21,15 @@
                     <form method="POST">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="mb-3">
-                            <label class="form-label small fw-medium">Username</label>
+                            <label class="form-label small fw-medium">Username <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" name="username" value="{{ admin.username if admin else '' }}" {{ 'readonly' if admin }} required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-medium">{{ 'New Password' if admin else 'Password' }}</label>
+                            <label class="form-label small fw-medium">{{ 'New Password' if admin else 'Password' }}{% if not admin %} <span class="text-danger">*</span>{% endif %}</label>
                             <input type="password" class="form-control" name="password" placeholder="{{ 'Leave blank to keep current' if admin else '' }}" {{ 'required' if not admin }}>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-medium">Name</label>
+                            <label class="form-label small fw-medium">Name <span class="text-danger">*</span></label>
                             <div class="row g-2">
                                 <div class="col-md-4">
                                     <input type="text" class="form-control" name="first_name" placeholder="First Name" value="{{ admin.first_name if admin else '' }}" required>
